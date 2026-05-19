@@ -22,6 +22,49 @@ A public SaaS website editor with an AI brain — built for small business owner
 2. [`docs/PLAN.md`](./docs/PLAN.md) — product vision, locked decisions, architecture, pricing model
 3. [`docs/PHASE_1.md`](./docs/PHASE_1.md) — current phase build order (editor only), dependency-ordered
 
+## Repo layout
+
+```
+/apps
+  /web              Next.js frontend + API routes
+  /ai               FastAPI service for AI / agent work (Python)
+/packages
+  /ui               Shared UI components (shadcn/ui lives here in A2+)
+  /db               Drizzle schema, migrations, DB access (Group B+)
+  /types            Shared TypeScript types
+/docs               PLAN.md, PHASE_1.md, ARCHITECTURE.md (later)
+```
+
+## Prerequisites
+
+- **Node 22+** (`.nvmrc` pins to 22; `nvm use` will pick it up)
+- **pnpm 10+** — install with `corepack enable && corepack prepare pnpm@latest --activate`
+- **Python 3.12+** (for `/apps/ai`)
+
+## Setup
+
+```bash
+pnpm install              # installs JS deps for all workspaces
+```
+
+The Python venv for `/apps/ai` is created automatically on first `pnpm dev` via `apps/ai/dev.sh`. To set it up manually:
+
+```bash
+cd apps/ai
+python3 -m venv .venv
+.venv/bin/pip install -e .
+```
+
+## Common commands
+
+| Command | Effect |
+|---|---|
+| `pnpm dev` | Starts `apps/web` on :3000 and `apps/ai` on :8000 in parallel via Turborepo |
+| `pnpm build` | Builds every workspace |
+| `pnpm lint` | Lints every workspace |
+| `pnpm typecheck` | Typechecks every workspace |
+| `pnpm --filter @northpoint/web dev` | Runs a single workspace |
+
 ## Status
 
-Pre-launch. Brand-new repo, separate from any prior project. Phase 1 (editor only) is the current focus — see `docs/PHASE_1.md` for the build order.
+Pre-launch. Brand-new repo, separate from any prior project. Phase 1 (editor only) is the current focus — see `docs/PHASE_1.md` for the build order. Currently on **A1: monorepo bootstrap**.
