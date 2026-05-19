@@ -1,0 +1,92 @@
+# ---------- Node / pnpm / Turborepo ----------
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.turbo/
+.cache/
+
+# ---------- Next.js ----------
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+.vercel/
+
+# ---------- TypeScript ----------
+*.tsbuildinfo
+
+# ---------- Env files (NEVER commit) ----------
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# ---------- Python / FastAPI ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# ---------- Playwright ----------
+/playwright-report/
+/playwright/.cache/
+/test-results/
+/blob-report/
+playwright/.auth/
+
+# ---------- Drizzle / migrations artifacts ----------
+drizzle/.snapshot/
+drizzle/meta/_journal.json.tmp
+
+# ---------- IDE / editor ----------
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- OS junk ----------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ---------- Logs ----------
+logs/
+*.log
+
+# ---------- Local Supabase ----------
+supabase/.branches/
+supabase/.temp/
+
+# ---------- Misc ----------
+*.local
+.eslintcache
+.stylelintcache
