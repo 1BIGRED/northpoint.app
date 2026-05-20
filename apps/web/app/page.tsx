@@ -28,12 +28,9 @@ import {
 } from "@northpoint/ui/components/dropdown-menu";
 import { Input } from "@northpoint/ui/components/input";
 import { Label } from "@northpoint/ui/components/label";
-import { Toaster } from "@northpoint/ui/components/toaster";
-import { useToast } from "@northpoint/ui/hooks/use-toast";
+import { Toaster, toast } from "@northpoint/ui/components/sonner";
 
 export default function HomePage() {
-  const { toast } = useToast();
-
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-8">
       <header className="space-y-2">
@@ -103,9 +100,8 @@ export default function HomePage() {
           <Button
             variant="secondary"
             onClick={() =>
-              toast({
-                title: "Toast fired",
-                description: "Toaster is mounted at the bottom-right.",
+              toast("Toast fired", {
+                description: "Sonner is mounted at the bottom-right.",
               })
             }
           >
