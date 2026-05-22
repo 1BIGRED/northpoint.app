@@ -1,0 +1,63 @@
+# PR Checks
+#
+# Runs on every pull request targeting main. Gates merges on typecheck,
+# lint, and build passing across the whole pnpm workspace.
+#
+# The e2e (Playwright) step is intentionally deferred — there are no
+# Playwright tests in /playwright/tests yet. That gets added once Phase 1
+# Group F builds the first flows. See playwright/SKILL.md.
+#
+# A separate qa.yml workflow (also deferred) will run the full QA agent
+# on pushes to staging — see PHASE_1.md A6.
+
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs when a PR is updated — saves Actions minutes
+# and gets you the latest result faster.
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck / lint / build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm has to be set up BEFORE setup-node, so setup-node can find
+      # pnpm on PATH when it configures its pnpm-store cache.
+      # Version is read from root package.json's `packageManager` field
+      # (pnpm@10.32.1) — keeping the source of truth in one place avoids
+      # ERR_PNPM_BAD_PM_VERSION on local-vs-CI mismatches.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      # TODO: add `pnpm test:e2e` once Playwright flows land in
+      # /playwright/tests (Phase 1 Group F). Will need:
+      #   - run: pnpm exec playwright install --with-deps chromium
+      #   - run: pnpm test:e2e
