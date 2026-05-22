@@ -33,10 +33,11 @@ jobs:
 
       # pnpm has to be set up BEFORE setup-node, so setup-node can find
       # pnpm on PATH when it configures its pnpm-store cache.
+      # Version is read from root package.json's `packageManager` field
+      # (pnpm@10.32.1) — keeping the source of truth in one place avoids
+      # ERR_PNPM_BAD_PM_VERSION on local-vs-CI mismatches.
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Install Node
         uses: actions/setup-node@v4
