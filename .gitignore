@@ -55,6 +55,7 @@ coverage.xml
 # ---------- Playwright ----------
 /playwright-report/
 /playwright/.cache/
+/playwright/artifacts/
 /test-results/
 /blob-report/
 playwright/.auth/
