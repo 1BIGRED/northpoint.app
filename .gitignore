@@ -59,6 +59,7 @@ coverage.xml
 /test-results/
 /blob-report/
 playwright/.auth/
+.playwright-mcp/
 
 # ---------- Drizzle / migrations artifacts ----------
 drizzle/.snapshot/
