@@ -17,6 +17,8 @@
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.75",
+    "playwright": "^1.60.0",
     "turbo": "^2.9.14",
     "typescript": "^5.9.3"
   }
