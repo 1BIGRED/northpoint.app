@@ -38,17 +38,18 @@ Pin to these. Do not introduce alternatives without explicit user approval.
 | Styling | Tailwind CSS + shadcn/ui |
 | Client state | Zustand for UI state, TanStack Query for server state |
 | Backend (CRUD/auth) | Next.js API routes |
-| Backend (AI/agents) | FastAPI service in `/apps/ai`, Python 3.12+ |
+| Backend (AI/agents) | **Phase 1:** Vercel AI SDK v6 inside Next.js. **Phase 2:** FastAPI service in `/apps/ai` (Python 3.12+) returns for cross-platform agent orchestration. |
 | Database | Postgres via Supabase |
 | Auth | Supabase Auth |
 | File storage | Supabase Storage |
 | Vector DB | Supabase pgvector (when needed, Phase 2+) |
 | ORM | Drizzle ORM (TypeScript-first, plays well with Supabase) |
+| Editor framework | **Puck** (MIT, React visual editor) — Phase 1 Group E. Section library = Puck components. Puck JSON persisted to Supabase. |
 | LLM (primary) | Anthropic API — Sonnet 4.6 default, Opus 4.7 for structural edits |
 | LLM (fallback) | OpenAI API |
 | Image gen | OpenAI gpt-image-1, called inline from chat — no dedicated UI |
 | Hosting (web) | Vercel |
-| Hosting (AI service) | Railway |
+| Hosting (AI service) | Railway — **Phase 2 only.** Not used in Phase 1. |
 | Payments | Stripe |
 | Email | Resend |
 | Browser automation (dev) | Playwright MCP for Claude Code |
@@ -57,6 +58,18 @@ Pin to these. Do not introduce alternatives without explicit user approval.
 
 **If you need a library not listed here:** propose it in the PR description, do not silently add it. Avoid adding more than one dependency per PR.
 
+### Editor abstraction (no direct Puck leakage)
+
+The website editor is built on **Puck** in Phase 1. Per the competitive review, Puck has bus-factor risk relative to enterprise alternatives (Plasmic, Builder.io). To make a future swap a contained refactor instead of a codebase-wide rewrite, **all editor logic MUST sit behind a thin interface module** at `/apps/web/lib/editor/` that exposes only generic operations:
+
+- `loadDocument(siteVersionId)` → canonical editor document
+- `saveDocument(siteVersionId, doc)` → persisted version
+- `renderPreview(doc)` → HTML for the preview iframe
+- `applyAIEdit(doc, patch)` → updated document
+- `listSections()` → registered section components
+
+**Puck-specific types, imports, and component shapes are forbidden outside `/apps/web/lib/editor/`.** No `import { ... } from '@measured/puck'` in route handlers, components, or AI tool code. The interface module is the only place that knows Puck exists. If we swap to Plasmic, Builder.io, or a custom editor later, the change is contained inside that module.
+
 ---
 
 ## 4. Repo layout
@@ -64,7 +77,7 @@ Pin to these. Do not introduce alternatives without explicit user approval.
 ```
 /apps
   /web              # Next.js frontend + API routes
-  /ai               # FastAPI service for AI/agent work
+  /ai               # Phase 2 placeholder — FastAPI returns for cross-platform agents
 /packages
   /ui               # shared shadcn/ui components
   /types            # shared TypeScript types
@@ -84,7 +97,7 @@ Pin to these. Do not introduce alternatives without explicit user approval.
 - Server-side utilities: `/apps/web/lib/`
 - Database access: only via `/packages/db/`, never direct SQL elsewhere
 - Types: `/packages/types/` for shared, `/apps/web/types/` for app-only
-- AI prompts: `/apps/ai/prompts/` as separate `.md` files, not inline in code
+- AI prompts: `/apps/web/prompts/` as separate `.md` files, not inline in code. (Moves back to `/apps/ai/prompts/` in Phase 2 when the Python service returns.)
 - Playwright tests: `/playwright/tests/`, organized by feature
 
 ---
@@ -130,11 +143,13 @@ Pin to these. Do not introduce alternatives without explicit user approval.
 
 ## 6. AI integration rules
 
+> **Phase 1 implementation:** AI calls happen inside Next.js via **Vercel AI SDK v6** — no separate Python service. The paths below are the Phase 1 canonical locations. When the FastAPI service returns in Phase 2 for cross-platform agent work, the equivalent Python paths (`/apps/ai/clients/*.py`, `/apps/ai/prompts/*.md`, `/apps/ai/config.py`) become canonical and this section will be re-bracketed.
+
 ### Calling the LLM
-- All Anthropic API calls go through `/apps/ai/clients/anthropic.py` — no direct SDK calls scattered through the codebase
-- Same pattern for OpenAI: `/apps/ai/clients/openai.py`
-- Every call has explicit timeout, retry policy, and credit-counting wrapper
-- Model selection lives in `/apps/ai/config.py` — change one constant to swap models everywhere
+- All Anthropic API calls go through `/apps/web/lib/ai/anthropic.ts` — no direct SDK calls scattered through the codebase. Wraps the provider from `@ai-sdk/anthropic`.
+- Same pattern for OpenAI: `/apps/web/lib/ai/openai.ts`.
+- Every call has explicit timeout, retry policy, and credit-counting wrapper.
+- Model selection lives in `/apps/web/lib/ai/config.ts` — change one constant to swap models everywhere.
 
 ### Credit accounting
 - Every AI call burns credits. Credits are counted in tokens, with a multiplier per model.
@@ -143,13 +158,19 @@ Pin to these. Do not introduce alternatives without explicit user approval.
 - If a user is out of credits, show a clear upgrade prompt, never silently degrade
 
 ### Prompts
-- All system prompts live in `/apps/ai/prompts/` as separate `.md` files
+- All system prompts live in `/apps/web/prompts/` as separate `.md` files
 - Versioned (e.g., `editor-restructure-v3.md`) — bumping the version is a deliberate act
 - Never inline a long prompt in code
 
 ### Streaming
 - All chat responses stream to the client. Never wait for full completion before showing anything.
-- Use Anthropic's streaming endpoint, server-sent events to the browser
+- Use **Vercel AI SDK v6** streaming primitives (`streamText`, `streamUI`) — handles SSE plumbing, tool calls, and multi-step agents inside Next.js route handlers.
+- Set `export const maxDuration = 60` (Hobby tier) or higher (Pro) on streaming routes. Streaming output continues past the deadline once headers are flushed.
+
+### Editor AI (Group E)
+- Tools operate on the **editor document** (Puck JSON under the hood, but accessed only via `/apps/web/lib/editor/` per the abstraction rule in §3). Edits are applied as JSON Patch operations (RFC 6902).
+- Standard tool set: `read_site_doc`, `read_profile`, `read_draft(name)`, `apply_edit(json_patch)`, `generate_section(description)`, `restructure(instruction)` (Opus 4.7).
+- Every AI edit shows a preview diff against the current document before applying. Undo is always available.
 
 ---
 
@@ -228,7 +249,7 @@ Storage: separate Supabase project (or separate schema) so production user data 
 - **Supabase RLS:** Row-Level Security is on for every user-facing table. New tables MUST have RLS policies. Without them, queries silently return empty results.
 - **Next.js server vs client components:** Don't try to use React hooks in a server component. Don't try to access `cookies()` in a client component. If unsure, default to server and mark `'use client'` only when something breaks.
 - **Stripe webhooks:** Always verify the signature. Never trust the body without verification.
-- **AI streaming + Vercel timeouts:** Vercel's default function timeout is 10s; the AI service runs on Railway specifically so it can stream longer. Don't call the AI from Next.js API routes — call the FastAPI service.
+- **AI streaming + Vercel timeouts (Phase 1):** Vercel AI SDK v6 handles streaming inside Next.js route handlers. Set `export const maxDuration = 60` (Hobby tier) or `300` (Pro) on streaming routes — streaming output continues past the deadline once headers are flushed, so most chat interactions fit fine. For Phase 1, this covers everything in Groups E and F (editor chat, hours-update chat). **Phase 2 caveat:** when multi-platform agent orchestration (GBP + Yelp + Instagram + …) needs to run longer than Vercel's hard cap, that work moves to the FastAPI service on Railway.
 - **Tailwind purging:** Dynamic class names (e.g., `text-${color}-500`) don't get included in production. Use full class names with conditionals.
 
 ---
@@ -236,6 +257,13 @@ Storage: separate Supabase project (or separate schema) so production user data 
 ## 11. Phase awareness
 
 Look at `PHASE_1.md` to see what's currently being built. **Do not build Phase 2+ features unless explicitly asked.** Resist scope creep — even if "while I'm here I could also add X" feels efficient, it isn't.
+
+### Phase 1 scope adjustments (per the strategic pivot)
+- **Single-tenant alpha** — BC Glass & Tint is the only real account; the founder is the admin. **No signup form, no auth UI for new users.** Customer #2 onboarded via SQL. Signup form returns when we hit customer #5.
+- **Business-only onboarding** — Personal flow is documented in `PLAN.md` §5 but deferred to Phase 2. The `profiles.type` column ships in Phase 1 so this is schema-additive (no migration needed in Phase 2).
+- **Editor built on Puck** — see Group E in `PHASE_1.md`. **Group E starts with a 1–2 day integration spike (E1) with a hard go/no-go.** If Puck fights us, fall back to a custom editor (12–14 day estimate vs the 10-day Puck path). Do not start E2+ until the spike passes. All editor code sits behind `/apps/web/lib/editor/` per the abstraction rule in §3.
+- **No FastAPI service in Phase 1** — Vercel AI SDK v6 in Next.js covers Phase 1's AI needs. `/apps/ai/` is preserved as an empty Phase 2 placeholder. Do not re-introduce FastAPI without the founder explicitly reopening A5/A8.
+- **GBP atomic-hours demo (new Group F)** — pulled forward from Phase 2. End-of-June 2026 target. Northpoint is source of truth; GBP-side conflict detection is Phase 2.
 
 ---
 
@@ -253,4 +281,8 @@ Hours of guessing > 30 seconds of asking.
 
 ## 13. Version
 
-This file is at v1.0. Update the version number when making significant changes. The founder is the only person who approves changes to this file.
+This file is at v1.1. Update the version number when making significant changes. The founder is the only person who approves changes to this file.
+
+**Changelog:**
+- **v1.1** — Strategic pivot: drop FastAPI for Phase 1 (Vercel AI SDK v6 replaces it inside Next.js), build editor on Puck (MIT) starting with a go/no-go spike, single-tenant alpha (no signup form), business-only onboarding (Personal deferred to Phase 2, schema-additive), GBP atomic-hours demo added as new Group F. Editor abstraction rule added so Puck swap stays contained.
+- **v1.0** — Initial CLAUDE.md.

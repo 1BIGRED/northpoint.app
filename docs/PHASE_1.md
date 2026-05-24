@@ -1,8 +1,13 @@
-# PHASE_1.md — Editor Only
+# PHASE_1.md — Editor + atomic-hours demo on BC Glass & Tint
 
-> **Goal:** Ship a website editor that's actually good. Nothing else.
-> **Estimated duration:** 4–6 weeks of focused work
-> **Done when:** A real user (you, your friend, an alpha tester) can sign up, onboard, import or start a site, edit it via click + chat, save drafts, and publish. Every step works on mobile + desktop. Playwright QA passes on every push.
+> **Goal:** Ship a website editor that's actually good, prove it on a real customer (BC Glass & Tint), and demo the atomic-update differentiator.
+> **Targets:**
+>  - BC Glass & Tint running on the Northpoint editor by **mid-June 2026**
+>  - "Change my hours → website + GBP atomically" demo recorded by **end of June 2026**
+> **Estimated duration:** 5–6 weeks of focused work
+> **Done when:** BC Glass & Tint's current site is imported, editable via click + chat, published to bcglassandtint.com (or a Northpoint subdomain), and the atomic hours-update demo works end-to-end on real data.
+>
+> **Scope vs original plan:** single-tenant alpha (no invite-code flow yet), business-only onboarding (Personal deferred to Phase 2), editor built on Puck behind an abstraction module (~1 week saved, with a go/no-go spike up front), Vercel AI SDK v6 replaces FastAPI for Phase 1, GBP integration pulled forward from Phase 2.
 
 This is the dependency-ordered build list. Do these in order. Don't skip ahead even if something later seems easier.
 
@@ -11,6 +16,8 @@ This is the dependency-ordered build list. Do these in order. Don't skip ahead e
 ## Group A — Foundation (Days 1–3)
 
 These have no dependencies. Do them first, in any order.
+
+> **Status:** A1, A2, A3, A4, A6 merged. A7 (Vercel) is the only remaining Phase 1 item. A5 (FastAPI) and A8 (Railway) are **deferred to Phase 2** per the strategic pivot — Vercel AI SDK v6 inside Next.js handles streaming, tool calls, and multi-step agents for the Phase 1 editor. FastAPI returns in Phase 2 when cross-platform agent orchestration needs Python.
 
 ### A1. Create the GitHub repo and bootstrap the monorepo
 - Private repo, owner: you
@@ -40,9 +47,9 @@ These have no dependencies. Do them first, in any order.
 - **Acceptance:** Claude Code in this repo can navigate to a URL and take a screenshot
 
 ### A5. Set up FastAPI stub
-- `/apps/ai/main.py` with a single `/health` endpoint returning `{ok: true}`
-- Dockerfile for Railway deploy
-- **Acceptance:** `curl localhost:8000/health` returns ok
+**Status: DEFERRED to Phase 2.** Vercel AI SDK v6 in Next.js covers Phase 1's AI needs (streaming, tool calls, multi-step agents) without a second language and second deploy target. The FastAPI service returns in Phase 2 when cross-platform agent orchestration (GBP, Instagram, Facebook, Yelp) benefits from the Python ecosystem.
+
+The `apps/ai/` folder is preserved in the repo as an empty Phase 2 placeholder.
 
 ### A6. Set up GitHub Actions CI
 - Workflow that runs on every PR: typecheck, lint, unit test, e2e test
@@ -56,9 +63,7 @@ These have no dependencies. Do them first, in any order.
 - **Acceptance:** A PR auto-deploys to a preview URL
 
 ### A8. Set up Railway deployment for `/apps/ai`
-- Connect repo to Railway
-- Production env vars set
-- **Acceptance:** Push to main deploys the AI service, `/health` is reachable on the prod URL
+**Status: DEFERRED to Phase 2.** Follows A5 — no FastAPI service to host in Phase 1.
 
 ---
 
@@ -70,14 +75,11 @@ Depends on Group A.
 Tables:
 - `users` (id, email, role enum [admin|user], created_at, updated_at, deleted_at)
 - `accounts` (id, user_id, type enum [admin|client], created_at) — for the two-account setup
-- `invite_codes` (code, created_by, used_by, used_at, expires_at)
+- ~~`invite_codes`~~ — *deferred to Phase 2 (multi-tenant). Not needed for single-tenant alpha.*
 - **Acceptance:** Migrations run clean, schema visible in Supabase dashboard
 
 ### B2. Sign up flow with invite code gating
-- `/signup` page: email, password, invite code field (required)
-- API route validates invite code is unused and unexpired
-- On success: create user (role = user), mark invite code used, send verification email
-- **Acceptance:** Sign up with valid code works; with invalid code shows error
+**Status: DEFERRED to Phase 2 (multi-tenant launch).** Phase 1 is single-tenant alpha — BC Glass & Tint is the only real account, and B5 provisions accounts manually in Supabase. The signup form returns when we hit customer #5, alongside the invite-code admin tool (B7).
 
 ### B3. Login flow
 - `/login` page: email + password, Google OAuth button
@@ -102,8 +104,7 @@ Tables:
 - **Acceptance:** One click opens your client account in a new tab
 
 ### B7. Generate first batch of invite codes
-- Simple admin tool at `/admin/invites`: list, generate new, mark expired
-- **Acceptance:** Generate 10 codes, see them in the list
+**Status: DEFERRED to Phase 2.** Follows B2 — no signup form, no invite codes needed in single-tenant alpha. Customer #2 will be SQL-provisioned.
 
 ---
 
@@ -118,15 +119,13 @@ Tables:
 
 ### C2. Onboarding scaffolding
 - `/onboarding` route, gated: only first-time users with no profile land here
-- Step component pattern: each step is a separate component, state managed in a wizard wrapper
+- Step component pattern: each step is a separate component, state managed in a wizard wrapper. **Phase 1: skip the Account Type fork — every user enters the Business flow directly.**
 - Progress bar at top
-- Skip button on every step except Account Type and Basics
-- **Acceptance:** Visit `/onboarding` after signup, see step 1
+- Skip button on every step except Basics (Account Type step is hidden in Phase 1)
+- **Acceptance:** Visit `/onboarding` after signup, see business step 1 (Basics)
 
 ### C3. Step 1 — Account type
-- Big two-button choice: Business or Personal
-- On select, save to draft profile and advance
-- **Acceptance:** Selecting Business goes to business step 2, Personal goes to personal step 2
+**Status: DEFERRED to Phase 2.** Phase 1 is business-only. The fork returns in Phase 2 when the Personal flow ships. The `profiles.type` column is included in C1 from day one so this is schema-additive (no migration needed in Phase 2).
 
 ### C4. Business flow steps 2–7
 - Basics, Contact, What You Do, Brand, Integrations (skip-only at launch), Done
@@ -136,9 +135,7 @@ Tables:
 - **Acceptance:** Complete the full business flow, profile row exists in DB with all data, lands at /app
 
 ### C5. Personal flow steps 2–6
-- Occasion, Name + Date, Audience, Privacy, Tone, Done
-- Same form pattern as business
-- **Acceptance:** Complete personal flow, profile row exists with type=personal, lands at /app
+**Status: DEFERRED to Phase 2.** The Personal product UX is documented in `PLAN.md` §5 and the schema is ready for it (`profiles.type = 'personal'`). Phase 1 is business-only.
 
 ### C6. Profile page at `/app/profile`
 - Same data, same form, ungated. Read + edit.
@@ -146,10 +143,10 @@ Tables:
 - **Acceptance:** Edit a field, save, refresh, see the new value
 
 ### C7. AI assist endpoint
-- POST `/apps/ai/api/assist-onboarding-field`
+- POST `/api/ai/assist-onboarding-field` *(Next.js route, not FastAPI)*
 - Input: field name, prior profile data
 - Output: 1–3 suggestions
-- Wraps an Anthropic Sonnet 4.6 call with a prompt from `/apps/ai/prompts/onboarding-assist-v1.md`
+- Implemented via **Vercel AI SDK v6** wrapping an Anthropic Sonnet 4.6 call. Prompts live in `/apps/web/prompts/onboarding-assist-v1.md` (moved from the old `/apps/ai/prompts/` location since there's no separate AI service in Phase 1).
 - Burns credits (small amount per call)
 - **Acceptance:** Click ✨ on Services field after filling in industry, get plausible service suggestions
 
@@ -173,18 +170,17 @@ Tables:
 - **Acceptance:** Profile creation results in exactly one `sites` row, one initial `site_versions` row
 
 ### D3. Import-as-is service
-- POST `/apps/ai/api/import-site`
-- Input: URL
+- POST `/api/ai/import-site` *(Next.js route)*
+- Input: URL. **Phase 1 calibration target: BC Glass & Tint's current site.**
 - Output: extracted HTML, CSS, image URLs, structure metadata
 - Implementation: server-side fetch + cheerio/jsdom to clean up, inline critical CSS, rewrite asset URLs to absolute
 - **Do not improve.** Store imported content verbatim.
-- **Acceptance:** Paste a real small business website URL, see imported HTML stored in `site_versions`
+- **Acceptance:** Paste BC Glass & Tint's current URL, see imported HTML stored in `site_versions`
 
 ### D4. Subdomain provisioning
-- For now: hardcoded wildcard `*.northpoint-app.com` (placeholder domain) pointing to Vercel
+- **Phase 1 simplified:** start by serving a single hardcoded subdomain (`bcglassandtint.northpoint-app.com`) and prove the round-trip works. Generalize to wildcard `*.northpoint-app.com` after BC Glass & Tint is live.
 - When a site is created, assign a slug from profile name (slugified, collision-suffixed)
-- Subdomain `[slug].northpoint-app.com` serves the published version of that site
-- **Acceptance:** A test profile's site is reachable at its subdomain
+- **Acceptance:** BC Glass & Tint's site is reachable at `bcglassandtint.northpoint-app.com`
 
 ### D5. Custom domain connection (basic)
 - Settings page: enter custom domain, get CNAME instructions
@@ -194,147 +190,196 @@ Tables:
 
 ---
 
-## Group E — The Editor (Days 14–28, the bulk of Phase 1)
+## Group E — The Editor (Days 14–24, ~10 days on Puck path; 12–14 days on fallback)
 
 Depends on Group D.
 
-### E1. Editor shell layout
+> **Implementation: built on Puck** (MIT-licensed React visual editor). Section library registers as Puck components. Puck's structured JSON is the canonical site representation, persisted to Supabase `site_versions.json`. HTML is rendered from JSON at request time (for preview and publish). AI chat operates on Puck JSON, not raw HTML — structural edits become tractable and undoable.
+>
+> **All editor code sits behind `/apps/web/lib/editor/`** per the abstraction rule in CLAUDE.md §3. No `import { ... } from '@measured/puck'` anywhere outside that module. Routes, components, and AI tools call the interface (`loadDocument`, `saveDocument`, `renderPreview`, `applyAIEdit`, `listSections`) — they don't know Puck exists.
+>
+> **Spike-first.** E1 is a 1–2 day Puck integration spike with a hard go/no-go decision at its end. If Puck supports the four critical needs (custom components for our section library, embeddable in a Next.js client route, programmatic JSON editing for AI chat to use, server-side HTML render from JSON for publish), Group E continues at the 10-day budget. If any of those four fails, Group E falls back to a custom click-to-edit editor and slips to 12–14 days. Do not start E2+ until E1 passes.
+
+### E1. Puck integration spike (Days 14–15, hard go/no-go)
+- Install Puck in `/apps/web` and embed in a throwaway `/dev/puck-spike` route
+- Stand up the first cut of `/apps/web/lib/editor/` interface module so the spike code already exercises the abstraction boundary — even if the implementation is one-line passthroughs to Puck
+- Build one custom "Hero" Puck component matching the shape our section library will need (props, defaults, render function)
+- Edit it in the Puck UI, save the resulting Puck JSON to a local file
+- Render that JSON back to static HTML via Puck's render API on a server route
+- Programmatically apply a JSON Patch to the Puck doc (simulate what AI chat will do) — confirm the UI reflects the change
+- **Go/no-go at end of day 15:**
+  - **Go:** all four work cleanly → proceed to E2+ as planned
+  - **No-go:** any one fails badly → tear out Puck, mark Group E as "Custom editor (12–14 days)", report back to founder with the specific failure mode before proceeding
+- **Acceptance:** A short writeup in the PR description recording which path Group E is taking and why
+
+### E2. Editor shell layout
 - `/app/sites/[id]/edit` route
-- Three-pane layout: left (pages + drafts panel), center (live preview), right (AI chat panel)
+- Three-pane layout: left (pages + drafts panel), center (editor + preview, via `/apps/web/lib/editor/`), right (AI chat panel)
 - Top bar: Save, Preview, Publish, Basic↔Advanced toggle, viewport toggle (mobile/tablet/desktop), back button
 - Collapsible panels for screen real estate
 - **Acceptance:** Visit the route, see all three panels with placeholder content
 
-### E2. Live preview iframe
-- Center pane renders an iframe pointing to a render endpoint that returns the current draft's HTML
-- Iframe updates live as the draft changes (postMessage protocol)
-- Viewport toggle changes iframe width: 375 / 768 / 1280
-- **Acceptance:** Edit the draft HTML via DB, see iframe update; toggle viewport, see iframe resize
+### E3. Live preview
+- Center pane renders the editor's preview mode via `renderPreview(doc)` from the interface module
+- Preview updates live as the editor JSON changes
+- Viewport toggle changes preview width: 375 / 768 / 1280
+- **Acceptance:** Edit a section, see preview update; toggle viewport, see preview resize
 
-### E3. Click-to-edit foundation (text)
-- Inside the iframe, every text node becomes hover-highlightable
-- Click a text node → floating toolbar appears with: font size, color (palette from brand colors), bold, italic, alignment, link
-- Edits write to the draft via postMessage → editor parent → API
-- **Acceptance:** Click an h1, change its text and color, see it update in the iframe and persist to DB
+### E4. Click-to-edit foundation (text)
+- Puck handles text editing natively; we register text-field types and brand-color palette
+- Floating toolbar shows: font size, color (palette from brand colors), bold, italic, alignment, link
+- Edits write to the editor JSON via `applyAIEdit` (or its manual-edit equivalent) on the interface module
+- **Acceptance:** Click an h1, change its text and color, see it update in the preview and persist to DB
 
-### E4. Click-to-edit for images
-- Click an image → floating toolbar: replace from URL, upload (Supabase Storage), AI generate (burns credits), alt text, delete
-- **Acceptance:** Replace an image via upload, see new image in iframe
+### E5. Click-to-edit for images
+- Custom Puck field for image swap: replace from URL, upload (Supabase Storage), AI generate (burns credits), alt text, delete
+- **Acceptance:** Replace an image via upload, see new image in the preview
 
-### E5. Click-to-edit for sections
-- Sections defined by HTML element with `data-section` attribute
-- Click a section → drag handles for reorder, plus buttons: duplicate, delete, "AI improve this section"
+### E6. Click-to-edit for sections
+- Sections are Puck components with native reorder/duplicate/delete handles
 - "+ Add Section" buttons appear between sections
+- "AI improve this section" button per section
 - **Acceptance:** Reorder two sections via drag, see new order persist
 
-### E6. Section library
-- "+ Add Section" opens a side panel with categories: Hero, About, Services, Gallery, Testimonials, FAQ, CTA, Contact, Footer
-- Each category has 3–5 visual variants stored as HTML templates
-- Click a variant → inserts into the site at the position the + was clicked
-- AI section button at top of panel: text input → AI generates a custom section in the site's existing style
+### E7. Section library = Puck component registry
+- Each library category (Hero, About, Services, Gallery, Testimonials, FAQ, CTA, Contact, Footer) registers 3–5 Puck components via `listSections()`
+- "+ Add Section" opens a side panel listing the registry, grouped by category
+- Click a component → inserts at the position the + was clicked
+- AI section button at top of panel: text input → AI generates a custom section config in the site's existing style
 - **Acceptance:** Add a "Services" section from the library, see it appear; use AI custom: "add a section about our financing options"
 
-### E7. Save / Preview / Publish
-- **Save button:** opens a "Name this draft" modal, saves a new `site_versions` row with the name
-- **Preview button:** opens current state in a new tab on a `/preview/[siteId]?version=draft` URL
+### E8. Save / Preview / Publish
+- **Save button:** opens a "Name this draft" modal, calls `saveDocument` → new `site_versions` row with name + editor JSON
+- **Preview button:** opens current state in a new tab on a `/preview/[siteId]?version=draft` URL (server-renders HTML from the editor JSON via `renderPreview`)
 - **Publish button:** marks current draft as the published version, propagates to subdomain + custom domain; if user's hosting is external, generates an HTML export download
 - **Acceptance:** Save a named draft, see it in drafts panel; preview opens new tab; publish makes the site live
 
-### E8. Drafts panel
+### E9. Drafts panel
 - Left sidebar: list of saved drafts with name, timestamp, thumbnail (screenshot via Playwright at save time)
-- Click a draft → load it into the editor (with confirmation if current has unsaved changes)
+- Click a draft → calls `loadDocument` with that version, replaces editor state (with confirmation if current has unsaved changes)
 - Delete option per draft
 - **Acceptance:** Save 3 drafts, switch between them, delete one
 
-### E9. AI chat in editor
+### E10. AI chat in editor
 - Right panel: standard chat UI
-- Streaming responses via the FastAPI service
-- The AI has tools available:
-  - `read_site_html()` — get current draft HTML
+- Streaming responses via **Vercel AI SDK v6** (`streamText`) inside a Next.js route handler
+- The AI has tools available — all operate on the editor JSON via the interface module, not raw HTML:
+  - `read_site_doc()` — get current draft as editor JSON
   - `read_profile()` — get business profile
-  - `read_draft(name)` — get a named draft's HTML
-  - `apply_edit(diff)` — apply a structured edit to the current draft
+  - `read_draft(name)` — get a named draft's editor JSON
+  - `apply_edit(json_patch)` — apply a JSON Patch (RFC 6902) to the current draft via `applyAIEdit`
   - `restructure(instruction)` — read site, plan, apply structural changes (Opus 4.7)
-  - `generate_section(description)` — generate a new section in current style
+  - `generate_section(description)` — generate a new section config in current style
 - Every AI response that includes an edit shows a diff preview before applying
 - Undo button always available
 - **Acceptance:** Chat: "change all phone numbers to 702-555-1234" → preview diff → accept → all numbers change
 
-### E10. Basic vs Advanced toggle
+### E11. Basic vs Advanced toggle
 - Default: Basic mode. Floating toolbars show simplified options.
-- Advanced mode: unlocks raw CSS editor, custom HTML insertion, full layout/spacing controls, code view tab
+- Advanced mode: unlocks raw HTML/CSS slots in Puck components, custom HTML insertion, full layout/spacing controls, code view tab
 - Toggle persists per user (in account settings)
 - **Acceptance:** Toggle to Advanced, see new options appear; toggle back, see them hide
 
-### E11. Mobile/tablet/desktop preview
-- Top-bar buttons set iframe width
+### E12. Mobile/tablet/desktop viewport-aware AI
+- Top-bar buttons set preview width
 - AI chat is aware of current viewport when generating sections (responsive by default)
 - **Acceptance:** Switch to mobile preview, AI-generated sections respect mobile layout
 
-### E12. Chat-aware draft referencing
-- In chat: "use the hero from draft 'bold v2' and the services from draft 'minimal v4'"
-- AI uses `read_draft()` tool, extracts requested sections, merges into current
-- **Acceptance:** Save two named drafts, reference them in chat, see merge happen
+### E13. Chat-aware draft referencing
+**Status: DEFERRED to Phase 2 polish.** *(Was the old E12 — "use the hero from draft 'bold v2' and services from draft 'minimal v4'".)* Nice-to-have, not on the BC Glass & Tint critical path. The `read_draft(name)` tool is already wired in E10, so this can be enabled later by adding chat-side language without further backend work.
 
 ---
 
-## Group F — Polish + Testing (Days 29–35)
+## Group F — GBP integration + atomic-update demo (Days 25–28)
 
-Depends on Group E.
+**Pulled forward from Phase 2.** This is the differentiator and the demo target for end of June 2026.
 
-### F1. Loading + error states
+Depends on Groups C + E.
+
+### F1. Google Business Profile OAuth + read
+- "Connect Google Business Profile" button in profile settings
+- OAuth scope: `business.manage`
+- On connect: pull location, hours, phone, address into a `gbp_locations` table linked to the profile
+- **Acceptance:** Connect a real GBP location, see hours/address show up in `/app/profile`
+
+### F2. Google Business Profile write
+- API route that takes a partial profile diff and pushes it to GBP via the Business Profile API
+- Idempotent: re-running with the same payload is a no-op
+- **Phase 1 assumes Northpoint is source of truth.** No GBP-side conflict detection (someone editing GBP directly mid-flow is a Phase 2 concern).
+- **Acceptance:** Change hours in profile UI, click save, see updated hours on the real GBP listing within 60s
+
+### F3. "Update my hours" atomic chat interaction
+- Single-purpose chat at `/app/chat/hours` (full business chat lands in Phase 2)
+- User says "change Saturday hours to 10–4" → chat parses → confirmation card with old vs new → on confirm, updates editor JSON in the published `site_version` AND pushes to GBP in one transaction
+- Either both succeed or both roll back
+- **Acceptance:** Change Saturday hours via chat, see them update on bcglassandtint.com (or the subdomain) AND on the GBP listing
+
+### F4. Confirmation UI
+- After the atomic update, show: "✅ Updated hours on Website (live now) · ✅ Updated on Google Business Profile · ⚪ Yelp not connected — want to add it?"
+- This is the moment the differentiator becomes visible
+- **Acceptance:** The confirmation card renders correctly after F3 succeeds
+
+---
+
+## Group G — Polish, Testing, BC Glass & Tint launch (Days 29–35)
+
+Depends on Groups E + F.
+
+### G1. Loading + error states
 - Every async operation has a loading state
 - Every operation has a clear error UI with retry where applicable
 - Toast notifications for save/publish success and errors
 - **Acceptance:** Disconnect network, try to save, see clear error
 
-### F2. Empty states
+### G2. Empty states
 - New site with no content: show a helpful "let's get started" screen
 - Empty section library category: friendly message
 - No drafts yet: prompt to save first draft
-- **Acceptance:** New account, all empty states render correctly
+- **Acceptance:** Fresh BC Glass & Tint state, all empty states render correctly
 
-### F3. Mobile-friendly editor (responsive)
-- Editor itself must work on tablet at minimum, mobile acceptably
+### G3. Tablet + desktop polish (mobile acceptable, not gated)
+- Editor must work on tablet at minimum, desktop is the primary surface
 - Side panels collapse to drawers on small screens
 - Toolbars scroll horizontally if needed
 - **Acceptance:** Use the editor from an iPad, complete a basic edit
 
-### F4. Credit-burning integration
-- Every AI call deducts from a `credits` table per user
+### G4. Credit-burning integration
+- Every AI call deducts from a `credits` table per user (instrumented even at single-tenant; pricing TBD)
 - Header shows remaining credits
 - Out-of-credits modal blocks AI features with "upgrade" CTA (CTA not functional in Phase 1, just shown)
 - **Acceptance:** Burn credits with chat usage, see counter decrement; force credits to 0, see modal
 
-### F5. Playwright QA suite
-- `/playwright/tests/` covers:
-  - Signup → onboarding → editor flow
+### G5. Playwright QA suite (single-tenant scope)
+- `/playwright/tests/` covers the single-tenant Phase 1 flows:
+  - Manually-provisioned login → editor flow (no signup form to test)
   - Click-to-edit on every element type
-  - Save, preview, publish round-trip
+  - Save, preview, publish round-trip on Puck JSON
   - Chat edit flow with diff approval
   - Section library add
   - Draft save and load
+  - **Atomic hours-update demo (Group F) end-to-end**
 - All tests run on every PR
 - The `/qa` workflow runs on every staging push
 - **Acceptance:** All tests pass, QA workflow posts pass report on a PR
 
-### F6. Data collection pipes
+### G6. Data collection pipes
 - Every chat message, every edit, every screenshot logged to a separate `events` table or Supabase project
 - Toggle in account settings: "Help improve the product by sharing usage data" (default ON for early users, with clear disclosure)
 - **Acceptance:** Perform 10 edits, see 10 rows in the events table
 
-### F7. Documentation
-- Update `ARCHITECTURE.md` with the actual system as built
-- Write a `RUNBOOK.md` for common operational tasks (rotating keys, restarting services, etc.)
+### G7. Documentation
+- Update `ARCHITECTURE.md` with the actual system as built (including editor abstraction module + Puck integration choices from E1)
+- Write a `RUNBOOK.md` for common operational tasks (rotating keys, restarting services, GBP token refresh, etc.)
 - Update `CLAUDE.md` if any conventions changed
 - **Acceptance:** A new contributor could read the docs and onboard themselves
 
-### F8. Beta tester checklist
-- Pick 3–5 people (including you in client mode, ideally one existing client, one personal-site user, one technical friend)
-- Send invite codes
-- Give them a structured task: complete onboarding, edit your imported site, save 2 drafts, publish
-- Collect feedback via a shared doc
-- **Acceptance:** All beta testers complete the task and provide written feedback
+### G8. BC Glass & Tint goes live on Northpoint
+- BC Glass & Tint's current site is fully imported and editable in the Phase 1 editor
+- Site published to `bcglassandtint.com` (or `bcglassandtint.northpoint-app.com` if custom domain isn't ready in time)
+- Atomic hours-update demo (Group F) recorded as a screen capture, suitable for sharing
+- Founder + 1–2 BC Glass & Tint stakeholders walk through onboarding + one real edit + the atomic-hours flow successfully
+- **Acceptance:** All four bullets above check out. Phase 1 is shippable.
+- *Broader beta testing (3–5 invite-code users) returns at the start of Phase 2.*
 
 ---
 
@@ -342,24 +387,26 @@ Depends on Group E.
 
 Phase 1 is shippable when ALL of these are true:
 
-- [ ] You can sign up via invite code, complete business onboarding, land in editor with a default site
+- [ ] You (admin) and a manually-provisioned BC Glass & Tint account can both log in
+- [ ] BC Glass & Tint completes business onboarding and lands in editor with their imported site
 - [ ] You can import a real existing site by URL, see it loaded as-is
-- [ ] You can edit text, images, and sections via clicking
+- [ ] You can edit text, images, and sections via clicking (via the editor abstraction module)
 - [ ] You can add new sections from the library or via AI custom
-- [ ] You can chat with the AI and apply structural changes
-- [ ] You can save named drafts, load them, reference them in chat
+- [ ] You can chat with the AI and apply structural changes (operating on editor JSON)
+- [ ] You can save named drafts, load them
 - [ ] You can preview without saving
 - [ ] You can publish to subdomain or custom domain
 - [ ] You can export HTML at any time
-- [ ] Mobile/tablet/desktop preview works
+- [ ] Tablet + desktop preview works (mobile acceptable, not gated)
 - [ ] Basic and Advanced modes both function
 - [ ] Credits burn correctly on AI use; manual editing is free
-- [ ] Admin panel shows you the user list, site list, and credit usage
+- [ ] Admin panel shows the user list (small), site list, and credit usage
 - [ ] One-click switch between admin and client accounts works
 - [ ] Playwright QA passes on staging
-- [ ] You and 3+ beta testers have completed a full flow successfully
+- [ ] **BC Glass & Tint is live on the Northpoint editor at bcglassandtint.com (or subdomain)**
+- [ ] **"Change my hours → website + GBP atomically" demo works end-to-end and is recorded**
 
-When all sixteen are checked, Phase 1 is done and we move to Phase 2 (website generation + business chat + GBP).
+When all eighteen are checked, Phase 1 is done and we move to Phase 2 (website generation + full business chat across all platforms + Personal onboarding + multi-tenant signup + FastAPI for cross-platform agents).
 
 ---
 
@@ -368,8 +415,13 @@ When all sixteen are checked, Phase 1 is done and we move to Phase 2 (website ge
 Resist scope creep. These come later:
 
 - Website generation from prompt (Phase 2)
-- Business chat that takes actions (Phase 2)
-- Google Business Profile integration (Phase 2)
+- Full business chat across all platforms (Phase 2) — *Phase 1 ships only the single-purpose "update my hours" interaction in Group F*
+- GBP write for anything besides hours (Phase 2)
+- GBP-side conflict detection (Phase 2) — Phase 1 assumes Northpoint is source of truth
+- Personal onboarding flow (Phase 2 — schema-additive, no migration needed)
+- Multi-tenant invite-code signup (Phase 2 — Phase 1 is single-tenant alpha)
+- FastAPI service / Railway deploy (Phase 2 — Vercel AI SDK v6 covers Phase 1)
+- Chat-aware draft referencing (Phase 2 polish — see deferred E13)
 - Analytics dashboard for users (Phase 3)
 - Domain reselling (Phase 3)
 - Instagram/Facebook/Yelp integrations (Phase 3)
