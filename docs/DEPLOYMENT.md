@@ -8,8 +8,15 @@ How `northpoint` is hosted in Phase 1. Initial setup landed in A7 (see `docs/PHA
 
 | Service | Where | URL |
 |---|---|---|
-| `apps/web` (Next.js 16, app router) | Vercel | _filled in after first deploy_ |
+| `apps/web` (Next.js 16, app router) | Vercel | **https://northpoint-app-web.vercel.app** (production) |
 | `apps/ai` | Not deployed in Phase 1 — see `apps/ai/README.md` | — |
+
+### URL patterns
+
+- **Production:** `https://northpoint-app-web.vercel.app` — Vercel auto-generated the subdomain from `<project-name>-<root-directory-basename>`. The `-web` suffix is the `apps/web` Root Directory leaking into the URL; it disappears later when we attach a real custom domain.
+- **Per-deployment immutable URL:** `https://northpoint-app-web-<git-sha>-<vercel-account-slug>.vercel.app` (visible in the Vercel dashboard for every deployment; useful for sharing a specific build with a reviewer).
+- **Per-branch alias:** `https://northpoint-app-web-git-<branch-slug>-<vercel-account-slug>.vercel.app` (auto-generated for every branch with a deployment).
+- **PR preview:** posted as a deployment status check on each PR; format is the per-deployment immutable URL.
 
 ---
 
@@ -107,7 +114,11 @@ Steps to import the repo and reach a green production deploy:
 
 ## Known quirks
 
-- _None recorded yet — fill in after first production deploy._
+- **Page `<title>` is the literal string `{{PRODUCT_NAME}}`** in production — intentional per `CLAUDE.md` §1 (placeholder that will be search-replaced when the real product name lands). Looks odd in a browser tab but is correct.
+- **`favicon.ico` 404** on every page — no favicon committed yet. Cosmetic; resolves when branding lands.
+- **Vercel auto-suffix in URL** (`-web` from Root Directory `apps/web`) — see URL patterns above. Disappears with a custom domain.
+- **First-build env-var warning from Turborepo:** the Vercel build log showed Turbo didn't know about the Supabase env vars and Next.js had to read them via its own env loading. Functionally correct (Supabase is connected and `/debug/supabase` is green), but messy enough that it's getting fixed in a follow-up PR by declaring the three vars under `tasks.build.env` in `turbo.json`.
+- **pnpm "Ignored build scripts" warning** on every install — `unrs-resolver` (and likely `sharp` once it triggers) need explicit approval via `pnpm.onlyBuiltDependencies` in the root `package.json`. Fixed in the same follow-up PR as the Turbo env var fix.
 
 ---
 
