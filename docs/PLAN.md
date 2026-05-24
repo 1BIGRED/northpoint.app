@@ -14,7 +14,9 @@ A public SaaS product where small business owners and individuals create, edit, 
 
 **Primary customer at launch:** small business owners with simple web needs — service businesses (tinting, salons, contractors, restaurants), local retail, professionals.
 
-**Secondary marketing angle:** personal sites (weddings, families, events, portfolios, hobby projects). Same product, different onboarding flow.
+**Phase 1 alpha target:** BC Glass & Tint running on the Northpoint editor by mid-June 2026, with a working "change my hours → website + Google Business Profile, atomically" demo by end of June.
+
+**Personal use cases** (weddings, families, events, portfolios) are deferred to Phase 2. Same product, additive onboarding flow. The schema stays generic enough that adding them later doesn't require a migration.
 
 The product is built for people who are *not* technical. They should never see code unless they flip the Advanced toggle.
 
@@ -26,15 +28,17 @@ The product is built for people who are *not* technical. They should never see c
 |---|---|
 | Project name | Placeholder `northpoint`, rename later |
 | Launch model | Public SaaS, invite-only at start, opens up after stability period |
-| Account types | Business (primary), Personal (secondary), forked at step 1 of onboarding |
+| Account types | **Phase 1:** Business only. **Phase 2:** Personal added without schema migration (`profiles.type` column already exists). |
 | Multi-business | One included, additional sites cost extra |
-| Free trial | 1 month, no credit card required |
+| Free trial | 1 month, no credit card required. **Phase 1 alpha:** single-tenant (BC Glass & Tint), invite-code flow deferred. |
 | End of trial | Site goes offline, profile becomes read-only, data preserved 90 days, HTML export remains free forever |
 | Paid tiers | Basic / Pro / Max with monthly non-rolling credits |
 | Credit usage | AI features burn credits, manual editing is free |
 | Overage | Auto-bill at higher per-credit rate OR manual bulk credit pack (cheaper). Packs deduct from pending overage first. Hard cap setting prevents runaway charges. |
 | Domains | Free subdomain at launch, custom domain connect at launch, domain reselling deferred to Phase 3 |
 | Editor experience | Wix-style click-to-edit + Durable-style AI chat + Basic/Advanced toggle |
+| Editor implementation | Built on **Puck** (MIT-licensed React visual editor). Section library = Puck component registry. Puck JSON persisted to Supabase. AI chat layered on top, operates on Puck JSON not raw HTML. All Puck-specific code sits behind `/apps/web/lib/editor/` per CLAUDE.md §3 so a future swap stays contained. |
+| AI runtime | **Phase 1:** Vercel AI SDK v6 inside Next.js — streaming, tool calls, multi-step agents. No separate Python service. **Phase 2:** FastAPI returns when cross-platform agent orchestration needs Python. |
 | AI-fills during onboarding | Opt-in only, per-field ✨ button — no auto-magic |
 | Imports | As-is, AI improves only when explicitly asked |
 | Admin/owner panel | What was "dev mode" — accounts, billing, analytics, sites, system health |
@@ -51,6 +55,8 @@ The product is built for people who are *not* technical. They should never see c
 - Competitor Analysis as a separate product — deferred to Phase 4+
 - Training pipeline as a feature — we collect data into pipes, decide later what to do with it
 - The Jarvis butler personality for the SaaS — stays as your personal local project on the Ryzen rig, unrelated to this product
+- **Separate FastAPI service for Phase 1** — Vercel AI SDK v6 in Next.js does streaming + tool calls + multi-step agents natively. FastAPI returns in Phase 2 if cross-platform agent orchestration needs Python.
+- **Personal-flow onboarding for Phase 1** — business-only at launch. The `profiles.type` column ships in Phase 1 so Personal can be added in Phase 2 without a migration.
 
 ---
 
@@ -91,7 +97,7 @@ The product everyone uses, including you in client mode.
 
 **Step 0 — Welcome.** "Let's set up your profile. Takes about 3 minutes. This is the brain that powers everything."
 
-**Step 1 — Account type.** Business or Personal. Forks the flow.
+**Step 1 — Account type.** Business or Personal. Forks the flow. *(Phase 1: this fork is hidden; everyone goes through Business. Personal returns in Phase 2.)*
 
 ### Business flow (7 steps after the fork)
 - **Basics:** business name, owner/contact name, industry dropdown with search, city/state/ZIP
@@ -101,7 +107,10 @@ The product everyone uses, including you in client mode.
 - **Integrations:** Google Business Profile (connect or skip), social accounts (skip is fine)
 - **Done:** "Generate a draft website now" or "Jump into the editor" — both land in editor
 
-### Personal flow (5 steps after the fork)
+### Personal flow (5 steps after the fork) — Phase 2
+
+> Documented here for continuity. Not built in Phase 1. The Phase 1 onboarding skips the Account Type fork and goes straight into the Business flow. The `profiles.type` enum already includes `personal` so this can be added in Phase 2 without a schema migration.
+
 - **Occasion:** Wedding / Baby / Event / Memorial / Portfolio / Hobby / Other
 - **Your name + event date** (if applicable)
 - **Audience:** just me / me + partner / family / friends / the public
@@ -124,6 +133,8 @@ One `profiles` row per profile (multiple per account if user has multiple sites)
 ---
 
 ## 6. Editor spec (Phase 1's main work)
+
+**Implementation:** built on **Puck** (MIT, React-native visual editor). Our section library registers as Puck components. Puck's structured JSON is persisted to Supabase as the canonical site representation; HTML is rendered from JSON at request time. AI chat operates on Puck JSON, not raw HTML — this makes structural edits (reorder, swap section, change brand color globally) tractable and undoable. All Puck-specific code sits behind `/apps/web/lib/editor/` per CLAUDE.md §3 so a future swap (Plasmic, Builder.io, custom) stays contained. See `PHASE_1.md` Group E for build order — note that E1 is a go/no-go integration spike.
 
 ### Layout
 - Center: live preview of their site, fully responsive
@@ -222,14 +233,18 @@ One `profiles` row per profile (multiple per account if user has multiple sites)
 
 ### Backend
 - **Next.js API routes** for simple CRUD, auth, billing webhooks
-- **FastAPI** (Python) for the AI/agent service — separate process, handles long-running streaming and browser automation
+- **Vercel AI SDK v6** inside Next.js for the AI runtime (streaming, tool calls, multi-step agents). Phase 1 has no separate AI service.
+- **FastAPI** (Python) — *Phase 2.* Returns when cross-platform agent orchestration (GBP, social platforms, Instagram, etc.) needs Python ecosystem libraries.
 - **Supabase** for auth + Postgres + storage + realtime (Phase 2)
 - **pgvector** (free, Supabase ships it) for RAG/embeddings when business chat lands
 
 ### Hosting
 - **Vercel** for Next.js frontend
-- **Railway** or **Fly.io** for FastAPI service
+- **Railway** or **Fly.io** for FastAPI service — *Phase 2 only.*
 - **Supabase** managed for DB + auth + storage
+
+### Editor framework
+- **Puck** (MIT-licensed, React-native visual editor) — base for Group E. Section library registers as Puck components. Puck JSON is the canonical site representation, persisted to Supabase. All Puck imports/types are confined to `/apps/web/lib/editor/` per CLAUDE.md §3.
 
 ### AI
 - **Anthropic API** (primary): Claude Sonnet 4.6 for most chat, Opus 4.7 for structural edits and reordering
@@ -249,7 +264,7 @@ One `profiles` row per profile (multiple per account if user has multiple sites)
 ```
 /apps
   /web              # Next.js frontend + API routes
-  /ai               # FastAPI service for AI/agent work
+  /ai               # Phase 2 placeholder (FastAPI returns when cross-platform agents need Python)
 /packages
   /ui               # shared shadcn/ui components
   /types            # shared TypeScript types
@@ -265,17 +280,28 @@ Monorepo with **pnpm** + **Turborepo** (free, fast, well-supported in Claude Cod
 
 ## 10. Phases
 
-### Phase 1 — Editor only (4–6 weeks)
-Ship a website editor that's actually good. Nothing else.
+### Phase 1 — Editor only (5–6 weeks)
+Ship a website editor that's actually good, prove it on a real customer, and demo the differentiator.
+
+**Target:** BC Glass & Tint running on the Northpoint editor by **mid-June 2026**, plus a working **"change my hours → website + GBP atomically"** demo by **end of June**.
+
+**Scope adjustments vs the original plan:**
+- Single-tenant for the alpha — BC Glass & Tint is the only real account. Invite codes deferred.
+- Business-only onboarding. Personal flow added in Phase 2 without a schema migration.
+- Editor built on Puck (saves ~1–2 weeks vs from scratch), preceded by a go/no-go integration spike.
+- AI runtime is Vercel AI SDK v6 inside Next.js — no separate FastAPI service.
+- GBP integration pulled forward from Phase 2 (the atomic-hours demo *is* the differentiator).
 
 See `PHASE_1.md` for the issue-by-issue build order.
 
-Phase 1 includes minimum viable auth, accounts, onboarding, and admin panel — but only what's needed to use the editor. No business chat. No analytics. No integrations. No website gen.
+Phase 1 includes minimum viable auth, accounts, onboarding, editor, GBP integration, and the single business-chat interaction needed for the hours-update demo. No website gen from prompt. No analytics dashboard for users. No other integrations.
 
 ### Phase 2 — Website generation + business chat (4–6 weeks after Phase 1)
 - Generate a site from prompt + profile data → drop into editor → refine
-- Business chat that knows the profile and takes actions
-- Google Business Profile integration (read + write)
+- Full business chat that knows the profile and takes actions across all connected platforms (Phase 1 only had the single hours-update interaction)
+- **FastAPI service stood up** for cross-platform agent orchestration (the work originally scoped in A5/A8)
+- **Personal onboarding flow** added (schema-additive, no migration)
+- Multi-tenant invite-code signup flow (Phase 1 was single-tenant alpha)
 - Full admin panel (analytics, billing UI, system health)
 
 ### Phase 3 — Custom domains reselling + integrations (4–6 weeks)
@@ -298,7 +324,7 @@ Phase 1 includes minimum viable auth, accounts, onboarding, and admin panel — 
 - New Anthropic API key (separate billing, separate kill switch)
 - New Supabase project (clean DB)
 - New deployment targets (no DNS collision)
-- Existing BC Glass & Tint + future clients stay on current Netlify setups until product is ready to migrate them
+- Existing future clients stay on current Netlify setups until the product is ready to migrate them. **BC Glass & Tint is the exception** — they are Phase 1's alpha tenant and migrate to Northpoint as part of the Phase 1 ship criteria.
 - Personal British-butler Jarvis on the Ryzen rig stays exactly as it is
 
 ### Risk mitigation
@@ -322,6 +348,9 @@ The product name is parked. Build everything under `northpoint` as placeholder. 
 - Marketing site copy
 - Specific section library content
 - Whether to support custom code components in Advanced mode
+- Personal onboarding flow (Phase 2 — schema-additive, no migration)
+- FastAPI / Railway / cross-platform Python agent service (Phase 2)
+- Multi-tenant invite-code signup (Phase 2 — single-tenant alpha for Phase 1)
 - Mobile app
 - Public API
 - Affiliate program
