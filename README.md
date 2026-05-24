@@ -45,7 +45,16 @@ A public SaaS website editor with an AI brain — built for small business owner
 
 ```bash
 pnpm install              # installs JS deps for all workspaces
+cp .env.example .env.local # then fill in real values (see Environment variables below)
 ```
+
+## Environment variables
+
+All required env vars are documented in [`.env.example`](./.env.example). Copy it to `.env.local` and fill in real values. `.env.local` is gitignored — never commit credentials.
+
+The Supabase values come from your project's dashboard → Project Settings → API (URL + keys) and → Database (connection string). The `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never appear in client code.
+
+Some Supabase configuration (auth providers, email templates) must be set in the dashboard rather than in code — see [`docs/SUPABASE_DASHBOARD_SETUP.md`](./docs/SUPABASE_DASHBOARD_SETUP.md).
 
 The Python venv for `/apps/ai` is created automatically on first `pnpm dev` via `apps/ai/dev.sh`. To set it up manually:
 
@@ -67,4 +76,4 @@ python3 -m venv .venv
 
 ## Status
 
-Pre-launch. Brand-new repo, separate from any prior project. Phase 1 (editor only) is the current focus — see `docs/PHASE_1.md` for the build order. Currently on **A1: monorepo bootstrap**.
+Pre-launch. Brand-new repo, separate from any prior project. Phase 1 (editor only) is the current focus — see `docs/PHASE_1.md` for the build order. Currently on **A3: Supabase setup**.
