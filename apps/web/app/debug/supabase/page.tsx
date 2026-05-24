@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { getSupabase } from "@/lib/supabase/client";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export default async function SupabaseDebugPage() {
   const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "(unset)";
 
   try {
-    const { error } = await supabase.auth.getSession();
+    const { error } = await getSupabase().auth.getSession();
     if (error) {
       status = "error";
       detail = error.message;
