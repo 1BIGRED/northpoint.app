@@ -25,6 +25,12 @@ A public SaaS — a website editor with an AI brain, sold to small businesses an
 7. **Branch naming:** `feature/<short-slug>`, `fix/<short-slug>`, `chore/<short-slug>`. No `main` work.
 8. **One PR per atomic task.** Don't bundle unrelated changes.
 
+### Handling credentials in chat
+
+When you need to reference an env var value, API key, database URL, or any other credential, refer to it by **name only** (e.g. `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`). **Never echo the actual value back into chat output** — not in messages, not in commit bodies, not in PR descriptions, not in code comments, not in error explanations. If you need to confirm a value, ask the founder to verify it themselves from their `.env.local` or password manager. Past sessions have had `service_role` keys end up in conversation logs — this rule prevents recurrence.
+
+This applies even when the founder pastes a value to you. Read the value, use it (write it to `.env.local`, run the command that needs it), then discuss only the variable name from that point on.
+
 ---
 
 ## 3. Tech stack (the only stack)
