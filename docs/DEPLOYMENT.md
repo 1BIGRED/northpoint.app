@@ -64,8 +64,8 @@ Set these in Vercel dashboard → northpoint project → **Settings → Environm
 | Variable | Source |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase dashboard → Project Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API Keys (the `sb_publishable_…` value, pasted into this Phase-1-named slot) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase dashboard → Project Settings → API Keys (the `sb_secret_…` value, pasted into this Phase-1-named slot) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase dashboard → Project Settings → API Keys → the `sb_publishable_…` value |
+| `SUPABASE_SECRET_KEY` | Supabase dashboard → Project Settings → API Keys → the `sb_secret_…` value |
 
 The same set is documented in `.env.example` at the repo root. Real values live ONLY in:
 - `apps/web/.env.local` (gitignored, local dev)
@@ -104,8 +104,8 @@ Steps to import the repo and reach a green production deploy:
    - Build Command / Install Command / Output Directory: leave as defaults; `apps/web/vercel.json` overrides them with the correct monorepo commands
 3. **Set environment variables** (three rows, all scopes = Production + Preview + Development):
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SECRET_KEY`
 4. **Deploy.** Vercel runs the first build from `main`.
 5. **Verify production:** load the production URL, hit `/debug/supabase`, expect the green "Supabase connected ✓" block.
 6. **Update this file.** Replace _filled in after first deploy_ with the actual production URL.

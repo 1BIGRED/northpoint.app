@@ -52,7 +52,7 @@ cp .env.example .env.local # then fill in real values (see Environment variables
 
 All required env vars are documented in [`.env.example`](./.env.example). Copy it to `.env.local` and fill in real values. `.env.local` is gitignored — never commit credentials.
 
-The Supabase values come from your project's dashboard → Project Settings → API (URL + keys) and → Database (connection string). The `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never appear in client code.
+The Supabase values come from your project's dashboard → Project Settings → API Keys (publishable + secret) and → Database (connection string). The `SUPABASE_SECRET_KEY` is server-only and must never appear in client code.
 
 Some Supabase configuration (auth providers, email templates) must be set in the dashboard rather than in code — see [`docs/SUPABASE_DASHBOARD_SETUP.md`](./docs/SUPABASE_DASHBOARD_SETUP.md).
 
