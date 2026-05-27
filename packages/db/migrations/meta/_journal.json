@@ -8,6 +8,13 @@
       "when": 1779653584533,
       "tag": "0000_majestic_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779905407788,
+      "tag": "0001_slimy_franklin_storm",
+      "breakpoints": true
     }
   ]
 }
