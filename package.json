@@ -14,15 +14,20 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:e2e": "pnpm --filter @northpoint/playwright test:e2e",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
     "@playwright/mcp": "^0.0.75",
+    "@playwright/test": "^1.60.0",
     "playwright": "^1.60.0",
     "turbo": "^2.9.14",
     "typescript": "^5.9.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["sharp", "unrs-resolver"]
+    "onlyBuiltDependencies": [
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
