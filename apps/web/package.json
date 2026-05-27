@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@northpoint/ui": "workspace:*",
+    "@puckeditor/core": "^0.21.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
     "@tailwindcss/postcss": "^4.3.0",
