@@ -17,7 +17,7 @@ This is the dependency-ordered build list. Do these in order. Don't skip ahead e
 
 These have no dependencies. Do them first, in any order.
 
-> **Status:** A1, A2, A3, A4, A6 merged. A7 (Vercel) is the only remaining Phase 1 item. A5 (FastAPI) and A8 (Railway) are **deferred to Phase 2** per the strategic pivot — Vercel AI SDK v6 inside Next.js handles streaming, tool calls, and multi-step agents for the Phase 1 editor. FastAPI returns in Phase 2 when cross-platform agent orchestration needs Python.
+> **Status: DONE.** All Phase 1 items merged: A1, A2, A3, A4, A6, A7. A5 (FastAPI) and A8 (Railway) **deferred to Phase 2** per the strategic pivot — Vercel AI SDK v6 inside Next.js handles streaming, tool calls, and multi-step agents for the Phase 1 editor. FastAPI returns in Phase 2 when cross-platform agent orchestration needs Python.
 
 ### A1. Create the GitHub repo and bootstrap the monorepo
 - Private repo, owner: you
@@ -71,7 +71,9 @@ The `apps/ai/` folder is preserved in the repo as an empty Phase 2 placeholder.
 
 Depends on Group A.
 
-### B1. Database schema v1 (Drizzle)
+> **Status: in progress, mostly done.** B1 (DB schema) and B3 (magic-link login + callback + middleware + stubs) merged. B4 was rolled into B3's middleware. B5 (manual SQL provisioning of the two accounts) is the only remaining gate before Group C — it's a one-time human action in the Supabase SQL editor (the snippet lives in PR #13's body). B2 and B7 (signup + invite codes) remain Phase 2.
+
+### B1. Database schema v1 (Drizzle) — **DONE** (PR #12, migration `0000_majestic_skin.sql` applied 2026-05-27)
 Tables:
 - `users` (id = FK to `auth.users.id`, email, role enum [admin|user], created_at, updated_at, deleted_at)
 - `accounts` (id, user_id = FK to `users.id`, type enum [admin|client], created_at, updated_at, deleted_at) — for the two-account setup
@@ -82,7 +84,7 @@ Tables:
 ### B2. Sign up flow with invite code gating
 **Status: DEFERRED to Phase 2 (multi-tenant launch).** Phase 1 is single-tenant alpha — BC Glass & Tint is the only real account, and B5 provisions accounts manually in Supabase. The signup form returns when we hit customer #5, alongside the invite-code admin tool (B7).
 
-### B3. Login flow (magic-link only)
+### B3. Login flow (magic-link only) — **DONE** (PR #13)
 - `/login` page: single email input → "Send magic link" button
 - Submit calls Supabase `signInWithOtp({ email })` from a Next.js server action / route handler
 - Confirmation screen: "Check your email — we sent a link to `<email>`"
@@ -92,13 +94,13 @@ Tables:
 - **Google OAuth deliberately omitted from Phase 1.** Rationale: zero benefit for the single-tenant alpha (founder + BC Glass & Tint owner are the only humans logging in), ~4–6 hours of work for OAuth consent screen + redirect URI wiring across local/preview/prod. Revisit in Phase 2 if real signups need it.
 - **Acceptance:** Founder enters their email at `/login`, receives magic link, clicks it, lands at `/admin` (admin role) or `/app` (user role) based on their `users.role`.
 
-### B4. Auth middleware
+### B4. Auth middleware — **DONE** (folded into PR #13's `proxy.ts`)
 - Next.js middleware that protects `/admin/*` (admin role only) and `/app/*` (authenticated user)
 - Unauthenticated visits → redirect to `/login` with return URL
 - Wrong-role visits → 403 page with link to correct destination
 - **Acceptance:** Direct URL access to `/admin` as a user redirects appropriately
 
-### B5. Generate your two accounts
+### B5. Generate your two accounts — pending (manual SQL in Supabase)
 - Manually create the admin row (founder's email) via SQL in Supabase: insert into `auth.users` (via Supabase dashboard's user management UI), then set `public.users.role = 'admin'` and insert matching `public.accounts` row with `type = 'admin'`.
 - Same for the client row (BC Glass & Tint owner's email): `users.role = 'user'`, `accounts.type = 'client'`.
 - No email verification step — the magic link itself is the verification.
@@ -118,10 +120,10 @@ Tables:
 
 Depends on Group B.
 
-### C1. Database schema v2
+### C1. Database schema v2 — **partially DONE** (PR #14)
 Tables:
-- `profiles` (id, account_id, type enum [business|personal], structured columns: name, industry, city, state, zip, phone, email, website_url; JSON column for flexible data: services, hours, social_links, brand_colors, tone, etc.; timestamps)
-- **Acceptance:** Migrations clean, profiles can be inserted via SQL
+- `profiles` — id, account_id (FK accounts.id), name (text), `type` (text + CHECK `IN ('business', 'personal')`, default `'business'`), `data` (jsonb default `'{}'`), timestamps, deleted_at. **Note:** the v1 schema in PR #14 ships the flexible `data` jsonb bag rather than the originally-planned structured columns (industry, city, state, zip, phone, etc.). Onboarding (C2+) populates `data.*` keys; if specific columns become hot-paths we can add them in a follow-up migration without breaking anything.
+- **Acceptance:** Migration applied, profiles can be inserted via SQL. RLS: account-owner SELECT + UPDATE their own profile.
 
 ### C2. Onboarding scaffolding
 - `/onboarding` route, gated: only first-time users with no profile land here
