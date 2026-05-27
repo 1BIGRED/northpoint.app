@@ -15,6 +15,13 @@
       "when": 1779905407788,
       "tag": "0001_slimy_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779909071863,
+      "tag": "0002_big_proudstar",
+      "breakpoints": true
     }
   ]
 }
