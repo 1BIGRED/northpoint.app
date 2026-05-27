@@ -1,8 +1,8 @@
-// The single place in the codebase allowed to import from @measured/puck.
+// The single place in the codebase allowed to import from @puckeditor/core.
 // Everything else imports from `lib/editor` (index.ts) which re-exports
 // only generic types + the adapter's outputs.
 
-import type { Config, Data, Field as PuckField } from "@measured/puck";
+import type { Config, Data, Field as PuckField } from "@puckeditor/core";
 
 import type { ComponentDefinition, ComponentRegistry, EditorDocument, Field } from "./types";
 

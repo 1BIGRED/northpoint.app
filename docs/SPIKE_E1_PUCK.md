@@ -30,7 +30,7 @@ apps/web/lib/editor/
   └── index.ts            Public exports — everything outside lib/editor/ imports from here
 ```
 
-`grep -r '@measured/puck' --include='*.ts*' apps/web/` confirms the only direct Puck imports are inside `lib/editor/` (Editor.tsx + puck-adapter.ts). The abstraction rule from CLAUDE.md §3 holds.
+`grep -r '@puckeditor/core' --include='*.ts*' apps/web/` confirms the only direct Puck imports are inside `lib/editor/` (Editor.tsx + puck-adapter.ts). The abstraction rule from CLAUDE.md §3 holds.
 
 ## What worked cleanly
 
@@ -43,10 +43,10 @@ apps/web/lib/editor/
 
 ## Painful spots / workarounds applied
 
-- **`@measured/puck` is deprecated.** npm install printed `WARN deprecated @measured/puck@0.20.2: Puck has moved. Please use @puckeditor/core instead`. The deprecated 0.20.2 release is still functional and was used for this spike. **Follow-up before shipping Group E:** swap to `@puckeditor/core@0.21.2` — likely a 1–2 hour change since the API surface stays the same; the spike's adapter shields the rest of the codebase from the swap.
+- **`@measured/puck` was deprecated mid-spike.** The initial spike commit used the deprecated `@measured/puck@0.20.2` because the auto-mode classifier blocked the package swap. The founder pre-authorized the swap in Batch 3, and `@puckeditor/core@0.21.2` is now what this branch installs. The API surface was identical — the only changes were the import strings and the CSS path. Manual smoke against the new package passed (`/spike/editor` loaded, all 5 blocks in the sidebar, no JS console errors).
 - **TS generic invariance.** Storing `ComponentDefinition<TextProps>` alongside `ComponentDefinition<ButtonProps>` in one registry required a deliberate `as unknown as ComponentDefinition[]` cast in `components/index.ts`. Isolated to one file; noted with a comment.
 - **No first-class URL field type in Puck.** Mapped `kind: "url"` to Puck's `text` field in the adapter. Cosmetic — adds no client-side validation. Easy to layer Zod validation on top in `Editor.tsx` later.
-- **Puck CSS import** (`@measured/puck/puck.css`) has to live inside the abstraction (it does, in `Editor.tsx`). Means custom theming routes through `lib/editor/` rather than via consumer overrides — fine for now.
+- **Puck CSS import** (`@puckeditor/core/puck.css`) has to live inside the abstraction (it does, in `Editor.tsx`). Means custom theming routes through `lib/editor/` rather than via consumer overrides — fine for now.
 
 ## Missing for shipping (Phase 1)
 
@@ -57,7 +57,7 @@ apps/web/lib/editor/
 | `applyAIEdit(json_patch)` (RFC 6902) over EditorDocument | not exercised | 3–4 h | nothing |
 | Nested children in Section via Puck DropZone | placeholder only | 4–6 h | nothing |
 | Image upload (Supabase Storage, presigned URL) | URL input only | 8–12 h | Supabase Storage bucket |
-| Swap `@measured/puck` → `@puckeditor/core` | using deprecated pkg | 1–2 h | nothing |
+| ~~Swap `@measured/puck` → `@puckeditor/core`~~ | **done in this PR** | — | — |
 
 Sum: **roughly 3 days of integration** on top of the spike's ½ day. Compares to PHASE_1.md's estimate of 12–14 days for a from-scratch custom editor.
 
@@ -71,13 +71,13 @@ Sum: **roughly 3 days of integration** on top of the spike's ½ day. Compares to
 4. **Bus-factor risk is real but bounded.** The package being deprecated mid-spike is a small signal in that direction. Mitigation: pin to a known-good version, plan the `@puckeditor/core` swap before Group F's launch, keep the abstraction strict.
 5. **Custom editor is a ~12–14 day undertaking** that delays the BC Glass launch (mid-June target) significantly. The marginal risk of Puck vs. custom doesn't justify ~9 extra days of build-out for the alpha.
 
-## Open questions for the founder
+## Open questions for the founder (resolved in Batch 3)
 
-These are worth a quick decision before un-drafting the spike PR or moving to E2:
+All three resolved:
 
-1. **OK to swap to `@puckeditor/core`** as a small follow-up PR (independent of the spike)? Recommendation: yes — deprecated package is a small but real liability.
-2. **OK with localStorage in `/spike/editor` until PR #16 merges**, or should I rebase the spike off `chore/d1-site-storage-schema` to wire Supabase persistence now? Recommendation: leave it on `main` with localStorage. The persistence wiring is straightforward once sites + site_pages exist.
-3. **Hours block default day labels are English Mon–Sun.** Internationalization is well outside Phase 1, but worth confirming the assumption.
+1. ~~OK to swap to `@puckeditor/core`?~~ — **yes, rolled into this PR.**
+2. ~~Stay on localStorage until PR #16 merges?~~ — **yes**, no rebase onto d1.
+3. ~~Hours block default labels English Mon–Sun?~~ — **yes**, confirmed for Phase 1.
 
 ## Test plan if/when this PR un-drafts
 

@@ -1,6 +1,6 @@
 // Public surface for the editor abstraction module. Anything outside this
 // directory MUST consume the editor through these exports. Per CLAUDE.md
-// §3, no `@measured/puck` imports are allowed elsewhere in the codebase.
+// §3, no `@puckeditor/core` imports are allowed elsewhere in the codebase.
 
 export type {
   Block,

@@ -1,15 +1,15 @@
 "use client";
 
 // The only file outside puck-adapter.ts allowed to import from
-// @measured/puck. Wraps Puck behind a generic <Editor> component whose
+// @puckeditor/core. Wraps Puck behind a generic <Editor> component whose
 // public surface is editor-agnostic: feed it an EditorDocument and the
 // registry, get back onChange + onPublish callbacks operating on
 // EditorDocument. CLAUDE.md §3 forbids direct Puck imports outside this
 // module.
 
-import "@measured/puck/puck.css";
+import "@puckeditor/core/puck.css";
 
-import { Puck } from "@measured/puck";
+import { Puck } from "@puckeditor/core";
 import { useMemo } from "react";
 
 import { buildPuckConfig, fromPuckData, toPuckData } from "./puck-adapter";
