@@ -73,18 +73,24 @@ Depends on Group A.
 
 ### B1. Database schema v1 (Drizzle)
 Tables:
-- `users` (id, email, role enum [admin|user], created_at, updated_at, deleted_at)
-- `accounts` (id, user_id, type enum [admin|client], created_at) — for the two-account setup
+- `users` (id = FK to `auth.users.id`, email, role enum [admin|user], created_at, updated_at, deleted_at)
+- `accounts` (id, user_id = FK to `users.id`, type enum [admin|client], created_at, updated_at, deleted_at) — for the two-account setup
 - ~~`invite_codes`~~ — *deferred to Phase 2 (multi-tenant). Not needed for single-tenant alpha.*
-- **Acceptance:** Migrations run clean, schema visible in Supabase dashboard
+- RLS enabled on both tables. Initial policies: authenticated user can `SELECT` their own row only. Writes are service-role only until B3 wires up specific app-side flows.
+- **Acceptance:** Migrations run clean, both tables + enums visible in Supabase dashboard, RLS shows enabled.
 
 ### B2. Sign up flow with invite code gating
 **Status: DEFERRED to Phase 2 (multi-tenant launch).** Phase 1 is single-tenant alpha — BC Glass & Tint is the only real account, and B5 provisions accounts manually in Supabase. The signup form returns when we hit customer #5, alongside the invite-code admin tool (B7).
 
-### B3. Login flow
-- `/login` page: email + password, Google OAuth button
-- On success: redirect based on role — `admin` → `/admin`, `user` → `/app`
-- **Acceptance:** Both email and Google login work, redirects are correct
+### B3. Login flow (magic-link only)
+- `/login` page: single email input → "Send magic link" button
+- Submit calls Supabase `signInWithOtp({ email })` from a Next.js server action / route handler
+- Confirmation screen: "Check your email — we sent a link to `<email>`"
+- Email link → Supabase auth callback at `/auth/callback?code=…` → exchange code for session → redirect by role: `admin` → `/admin`, `user` → `/app`
+- A DB trigger on `auth.users` insert populates `public.users` with the role from app metadata (default `user`); RLS lets the freshly-authenticated session read that row.
+- **Email delivery:** Supabase default SMTP for Phase 1 alpha. **Resend swap is a separate PR scheduled before Group G's BC Glass & Tint launch + demo recording** — track this as a known dependency.
+- **Google OAuth deliberately omitted from Phase 1.** Rationale: zero benefit for the single-tenant alpha (founder + BC Glass & Tint owner are the only humans logging in), ~4–6 hours of work for OAuth consent screen + redirect URI wiring across local/preview/prod. Revisit in Phase 2 if real signups need it.
+- **Acceptance:** Founder enters their email at `/login`, receives magic link, clicks it, lands at `/admin` (admin role) or `/app` (user role) based on their `users.role`.
 
 ### B4. Auth middleware
 - Next.js middleware that protects `/admin/*` (admin role only) and `/app/*` (authenticated user)
@@ -93,10 +99,10 @@ Tables:
 - **Acceptance:** Direct URL access to `/admin` as a user redirects appropriately
 
 ### B5. Generate your two accounts
-- Manually create your admin account in Supabase (set role = admin)
-- Manually create your client account with a separate email
-- Both confirmed via email verification
-- **Acceptance:** You can log in as either, see different landing pages
+- Manually create the admin row (founder's email) via SQL in Supabase: insert into `auth.users` (via Supabase dashboard's user management UI), then set `public.users.role = 'admin'` and insert matching `public.accounts` row with `type = 'admin'`.
+- Same for the client row (BC Glass & Tint owner's email): `users.role = 'user'`, `accounts.type = 'client'`.
+- No email verification step — the magic link itself is the verification.
+- **Acceptance:** Both rows visible in Supabase. Sending a magic link to either email lands the user at the correct page (`/admin` or `/app`).
 
 ### B6. Add "Switch to client account" button in admin nav
 - Top-right button in `/admin` layout

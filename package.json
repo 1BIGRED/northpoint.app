@@ -14,7 +14,10 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:generate": "pnpm --filter @northpoint/db db:generate",
+    "db:migrate": "pnpm --filter @northpoint/db db:migrate",
+    "db:studio": "pnpm --filter @northpoint/db db:studio"
   },
   "devDependencies": {
     "@playwright/mcp": "^0.0.75",
@@ -23,6 +26,6 @@
     "typescript": "^5.9.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["sharp", "unrs-resolver"]
+    "onlyBuiltDependencies": ["esbuild", "sharp", "unrs-resolver"]
   }
 }
