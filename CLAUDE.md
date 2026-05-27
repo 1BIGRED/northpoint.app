@@ -74,7 +74,7 @@ The website editor is built on **Puck** in Phase 1. Per the competitive review, 
 - `applyAIEdit(doc, patch)` → updated document
 - `listSections()` → registered section components
 
-**Puck-specific types, imports, and component shapes are forbidden outside `/apps/web/lib/editor/`.** No `import { ... } from '@measured/puck'` in route handlers, components, or AI tool code. The interface module is the only place that knows Puck exists. If we swap to Plasmic, Builder.io, or a custom editor later, the change is contained inside that module.
+**Puck-specific types, imports, and component shapes are forbidden outside `/apps/web/lib/editor/`.** No `import { ... } from '@puckeditor/core'` (the package; previously `@measured/puck`, now deprecated and swapped) in route handlers, components, or AI tool code. The interface module is the only place that knows Puck exists. If we swap to Plasmic, Builder.io, or a custom editor later, the change is contained inside that module.
 
 ---
 
@@ -144,6 +144,7 @@ The website editor is built on **Puck** in Phase 1. Per the competitive review, 
 - Every table has `id` (UUID), `created_at`, `updated_at`
 - Soft delete via `deleted_at` (nullable timestamp) — never hard delete user data
 - Foreign keys explicit, `ON DELETE` behavior always specified
+- **Migration numbering across parallel branches:** Drizzle assigns the next sequential `NNNN_*.sql` based on the local `meta/_journal.json`. When two branches generate `0001_*.sql` independently, whichever merges *first* keeps the number; the *second* must rebase onto main, delete its `0001_*.sql` + snapshot + journal entry, then re-run `pnpm db:generate` so Drizzle produces a clean `0002_*.sql`. Don't try to manually re-number files — the snapshot has to be cumulative against the previous migration, which only `db:generate` produces correctly. Manually re-appended RLS blocks survive the regeneration step (re-paste them into the new file).
 
 ---
 
@@ -208,6 +209,12 @@ These are documented in `/playwright/SKILL.md`.
 - Every push to `staging` runs the full QA workflow which posts a pass/fail report comment on the PR with screenshots
 - No PR merges without green CI
 - The QA workflow file is `/.github/workflows/qa.yml`
+
+### Claude Code tooling (Auto Mode, hooks, settings)
+- **Auto Mode** is on for autonomous work batches. Settings live in `.claude/settings.json` (project-scoped). The mode runs Claude through pre-approved tools without prompting per-call, but a built-in classifier still blocks risky/ambiguous actions (e.g. installing a package whose name doesn't match what the user typed).
+- When the classifier blocks a legitimate action, retry once with a more specific invocation. If still blocked, note it and skip — don't fight the classifier.
+- `.claude/settings.json` also pins the Playwright MCP server (see §7 above) and any project-wide hooks. Treat this file like any other code: review changes via PR, don't paste credentials.
+- The founder approves autonomous batches with a single prompt that includes blocker rules, stop conditions, and a structured stop-summary format. Stick to that contract.
 
 ---
 
@@ -287,8 +294,9 @@ Hours of guessing > 30 seconds of asking.
 
 ## 13. Version
 
-This file is at v1.1. Update the version number when making significant changes. The founder is the only person who approves changes to this file.
+This file is at v1.2. Update the version number when making significant changes. The founder is the only person who approves changes to this file.
 
 **Changelog:**
+- **v1.2** — Documented Drizzle migration numbering convention for parallel branches (collisions resolved via rebase + regenerate, not manual renumber). Updated Puck package reference from deprecated `@measured/puck` to `@puckeditor/core`. Added §7 subsection on Claude Code Auto Mode + `.claude/settings.json` + classifier behavior.
 - **v1.1** — Strategic pivot: drop FastAPI for Phase 1 (Vercel AI SDK v6 replaces it inside Next.js), build editor on Puck (MIT) starting with a go/no-go spike, single-tenant alpha (no signup form), business-only onboarding (Personal deferred to Phase 2, schema-additive), GBP atomic-hours demo added as new Group F. Editor abstraction rule added so Puck swap stays contained.
 - **v1.0** — Initial CLAUDE.md.
