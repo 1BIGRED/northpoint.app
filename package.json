@@ -18,7 +18,8 @@
     "db:generate": "pnpm --filter @northpoint/db db:generate",
     "db:migrate": "pnpm --filter @northpoint/db db:migrate",
     "db:studio": "pnpm --filter @northpoint/db db:studio",
-    "db:seed-debug-site": "pnpm --filter @northpoint/db db:seed-debug-site"
+    "db:seed-debug-site": "pnpm --filter @northpoint/db db:seed-debug-site",
+    "db:test-e2-storage": "pnpm --filter @northpoint/db db:test-e2-storage"
   },
   "devDependencies": {
     "@playwright/mcp": "^0.0.75",
