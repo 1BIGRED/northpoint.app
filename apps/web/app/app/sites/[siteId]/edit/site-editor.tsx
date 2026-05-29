@@ -2,9 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
-import { Editor, registry, type EditorDocument } from "@/lib/editor";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@northpoint/ui/components/dialog";
 
-import { publishAction, saveAction } from "./actions";
+import { Editor, registry, type EditorDocument } from "@/lib/editor";
+import { relativeTime } from "@/lib/relative-time";
+
+import { publishAction, saveAction, unpublishAction } from "./actions";
 
 type Props = {
   siteId: string;
@@ -18,8 +28,9 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 const SAVE_THROTTLE_MS = 500;
 
 // Client half of the editor route. Owns autosave (trailing-edge throttle),
-// publish, and the save-status indicator. The server page renders the
-// surrounding chrome (site name, back link) and feeds in the initial doc.
+// publish/unpublish (each behind a confirm dialog), and the save +
+// publish-status indicators. The server page renders the surrounding
+// chrome (site name, back link) and feeds in the initial state.
 export function SiteEditor({
   siteId,
   path,
@@ -33,6 +44,7 @@ export function SiteEditor({
   );
   const [error, setError] = useState<string | null>(null);
   const [isPublishing, startPublish] = useTransition();
+  const [confirm, setConfirm] = useState<null | "publish" | "unpublish">(null);
 
   // Trailing-edge throttle: coalesce a burst of edits into one save fired
   // SAVE_THROTTLE_MS after the latest change.
@@ -75,7 +87,8 @@ export function SiteEditor({
     };
   }, [siteId, path]);
 
-  const onPublish = useCallback(() => {
+  const doPublish = useCallback(() => {
+    setConfirm(null);
     setError(null);
     startPublish(async () => {
       try {
@@ -93,44 +106,68 @@ export function SiteEditor({
     });
   }, [siteId, path]);
 
+  const doUnpublish = useCallback(() => {
+    setConfirm(null);
+    setError(null);
+    startPublish(async () => {
+      try {
+        await unpublishAction(siteId, path);
+        setPublishedAt(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setSaveState("error");
+      }
+    });
+  }, [siteId, path]);
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <SaveStatusBar
+      <StatusBar
         saveState={saveState}
         savedAt={savedAt}
         publishedAt={publishedAt}
         isPublishing={isPublishing}
         error={error}
-        onPublish={onPublish}
+        onPublishClick={() => setConfirm("publish")}
+        onUnpublishClick={() => setConfirm("unpublish")}
       />
       <div className="flex-1">
         <Editor
           registry={registry}
           document={initialDocument}
           onChange={onChange}
-          onPublish={() => onPublish()}
+          onPublish={() => setConfirm("publish")}
         />
       </div>
+
+      <PublishDialog
+        kind={confirm}
+        busy={isPublishing}
+        onCancel={() => setConfirm(null)}
+        onConfirm={confirm === "unpublish" ? doUnpublish : doPublish}
+      />
     </div>
   );
 }
 
-function SaveStatusBar({
+function StatusBar({
   saveState,
   savedAt,
   publishedAt,
   isPublishing,
   error,
-  onPublish,
+  onPublishClick,
+  onUnpublishClick,
 }: {
   saveState: SaveState;
   savedAt: string | null;
   publishedAt: string | null;
   isPublishing: boolean;
   error: string | null;
-  onPublish: () => void;
+  onPublishClick: () => void;
+  onUnpublishClick: () => void;
 }) {
-  const label =
+  const saveLabel =
     saveState === "saving"
       ? "Saving…"
       : saveState === "saved" && savedAt
@@ -141,27 +178,97 @@ function SaveStatusBar({
 
   return (
     <div className="flex items-center justify-between border-b bg-white px-4 py-2 text-sm">
-      <div
-        className={
-          saveState === "error" ? "text-red-700" : "text-muted-foreground"
-        }
-      >
-        {label}
+      <div className="flex items-center gap-3">
+        <span
+          className={
+            saveState === "error" ? "text-red-700" : "text-muted-foreground"
+          }
+        >
+          {saveLabel}
+        </span>
+        <span className="text-muted-foreground" aria-hidden>
+          ·
+        </span>
         {publishedAt ? (
-          <span className="ml-3">
-            · published {new Date(publishedAt).toLocaleTimeString()}
+          <span className="text-muted-foreground">
+            Last published{" "}
+            <time dateTime={publishedAt} title={new Date(publishedAt).toLocaleString()}>
+              {relativeTime(publishedAt)}
+            </time>
           </span>
-        ) : null}
-        {error ? <span className="ml-3 font-mono text-xs">{error}</span> : null}
+        ) : (
+          <span className="text-muted-foreground">Not published yet</span>
+        )}
+        {error ? <span className="font-mono text-xs text-red-700">{error}</span> : null}
       </div>
-      <button
-        type="button"
-        onClick={onPublish}
-        disabled={isPublishing}
-        className="rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-black/85 disabled:opacity-50"
-      >
-        {isPublishing ? "Publishing…" : "Publish"}
-      </button>
+      <div className="flex items-center gap-3">
+        {publishedAt ? (
+          <button
+            type="button"
+            onClick={onUnpublishClick}
+            disabled={isPublishing}
+            className="text-xs text-muted-foreground underline-offset-4 hover:underline disabled:opacity-50"
+          >
+            Unpublish
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onPublishClick}
+          disabled={isPublishing}
+          className="rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-black/85 disabled:opacity-50"
+        >
+          {isPublishing ? "Working…" : publishedAt ? "Republish" : "Publish"}
+        </button>
+      </div>
     </div>
+  );
+}
+
+function PublishDialog({
+  kind,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  kind: null | "publish" | "unpublish";
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const isUnpublish = kind === "unpublish";
+  return (
+    <Dialog open={kind !== null} onOpenChange={(open) => (open ? null : onCancel())}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {isUnpublish ? "Unpublish this site?" : "Publish this site?"}
+          </DialogTitle>
+          <DialogDescription>
+            {isUnpublish
+              ? "Visitors will no longer be able to see this page. Your draft and the last published version are kept, so you can republish anytime."
+              : "Your latest saved changes will go live and be visible to anyone with the link."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white hover:bg-black/85 disabled:opacity-50"
+          >
+            {busy ? "Working…" : isUnpublish ? "Unpublish" : "Publish"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
