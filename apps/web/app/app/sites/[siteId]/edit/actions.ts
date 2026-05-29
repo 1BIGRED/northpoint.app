@@ -6,6 +6,7 @@ import type { EditorDocument } from "@/lib/editor";
 import {
   publishDocument,
   saveDocument,
+  unpublishDocument,
 } from "@/lib/editor/storage/supabase";
 
 // Server actions for the real editor route. Thin wrappers over the
@@ -32,4 +33,14 @@ export async function publishAction(
   // Bust the public render cache once that route exists (Group E6).
   revalidatePath(`/sites/${siteId}`);
   return { ok: true, publishedAt };
+}
+
+export async function unpublishAction(
+  siteId: string,
+  path: string,
+): Promise<{ ok: true }> {
+  await unpublishDocument(siteId, path);
+  // Drop the now-hidden page from the public render cache (Group E6).
+  revalidatePath(`/sites/${siteId}`);
+  return { ok: true };
 }
