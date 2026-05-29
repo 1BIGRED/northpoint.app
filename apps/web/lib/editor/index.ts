@@ -18,6 +18,8 @@ export { registry } from "./components";
 
 export { Editor, type EditorProps } from "./Editor";
 
+export { RenderDocument, type RenderDocumentProps } from "./Render";
+
 import { registry } from "./components";
 import type { BlockType, EditorAPI, EditorDocument } from "./types";
 
