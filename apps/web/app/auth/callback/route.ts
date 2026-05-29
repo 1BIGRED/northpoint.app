@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   const admin = getSupabaseAdmin();
   const { data: account } = await admin
     .from("accounts")
-    .select("type")
+    .select("id, type")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
@@ -46,12 +46,20 @@ export async function GET(request: Request) {
   } else if (account?.type === "admin") {
     destination = "/admin";
   } else if (account?.type === "client") {
-    destination = "/app";
+    // Client accounts land on their sites list — unless they haven't been
+    // through onboarding yet (no profile row), in which case start there.
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("account_id", account.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    destination = profile ? "/app/sites" : "/onboarding";
   } else {
-    // No account row yet. Onboarding (Group C) will live at /onboarding;
-    // stub to /app for now so the user lands somewhere safe.
-    // TODO(C1): route to /onboarding once Group C ships.
-    destination = "/app";
+    // No account row yet (alpha provisions accounts via SQL). Send them to
+    // onboarding, which surfaces a clear "contact the site owner" message
+    // when it can't find an account.
+    destination = "/onboarding";
   }
 
   return NextResponse.redirect(new URL(destination, requestUrl.origin));

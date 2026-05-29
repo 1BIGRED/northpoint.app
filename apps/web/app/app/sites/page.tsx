@@ -1,0 +1,109 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { Button } from "@northpoint/ui/components/button";
+import { Input } from "@northpoint/ui/components/input";
+
+import { getCurrentAccount, getProfileForAccount } from "@/lib/account";
+import { getSupabaseServer } from "@/lib/supabase/server";
+
+import { createSite } from "./actions";
+
+export const dynamic = "force-dynamic";
+
+type SiteRow = {
+  id: string;
+  name: string;
+  status: string;
+  updated_at: string;
+};
+
+export default async function SitesListPage() {
+  const supabase = await getSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login?returnTo=/app/sites");
+  }
+
+  // First-time users (no profile yet) go through onboarding first.
+  const account = await getCurrentAccount();
+  if (!account) {
+    redirect("/onboarding");
+  }
+  const profile = await getProfileForAccount(account.id);
+  if (!profile) {
+    redirect("/onboarding");
+  }
+
+  // RLS (sites_owner_all) scopes this to the user's own sites.
+  const { data, error } = await supabase
+    .from("sites")
+    .select("id, name, status, updated_at")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`load sites failed: ${error.message}`);
+  }
+  const sites = (data ?? []) as SiteRow[];
+
+  return (
+    <main className="mx-auto max-w-3xl space-y-8 px-6 py-12">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Your sites</h1>
+          <p className="text-sm text-muted-foreground">
+            {profile.name ? `${profile.name} · ` : ""}
+            {sites.length} {sites.length === 1 ? "site" : "sites"}
+          </p>
+        </div>
+        <form action="/api/auth/sign-out" method="post">
+          <button
+            type="submit"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Sign out
+          </button>
+        </form>
+      </div>
+
+      <section className="rounded-lg border p-4">
+        <h2 className="text-sm font-medium">Create a new site</h2>
+        <form action={createSite} className="mt-3 flex gap-2">
+          <Input name="name" placeholder="Site name (e.g. BC Glass & Tint)" />
+          <Button type="submit">Create new site</Button>
+        </form>
+      </section>
+
+      {sites.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No sites yet. Create your first one above.
+        </p>
+      ) : (
+        <ul className="divide-y rounded-lg border">
+          {sites.map((site) => (
+            <li
+              key={site.id}
+              className="flex items-center justify-between gap-4 px-4 py-3"
+            >
+              <div>
+                <div className="font-medium">{site.name}</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                  {site.status}
+                </div>
+              </div>
+              <Link
+                href={`/app/sites/${site.id}/edit`}
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+              >
+                Open editor
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
