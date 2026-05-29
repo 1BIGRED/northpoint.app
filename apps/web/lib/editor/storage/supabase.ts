@@ -132,6 +132,40 @@ export async function publishDocument(
   }
 }
 
+export type PublishedPage = {
+  document: EditorDocument;
+  publishedAt: string;
+};
+
+// Load a PUBLISHED page for the public render route. Reads only `content`
+// (never the draft) and only when published_at is set. Returns null when
+// the page doesn't exist or isn't published — the route turns that into a
+// 404. Runs through the ordinary session client: on a public request that
+// client is the `anon` role, and the site_pages_public_read RLS policy
+// (migration 0004) is what makes published rows visible. No service role.
+export async function loadPublishedDocument(
+  siteId: string,
+  path: string,
+): Promise<PublishedPage | null> {
+  const supabase = await getSupabaseServer();
+  const { data, error } = await supabase
+    .from("site_pages")
+    .select("content, published_at")
+    .eq("site_id", siteId)
+    .eq("path", path)
+    .not("published_at", "is", null)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`loadPublishedDocument failed: ${error.message}`);
+  }
+  if (!data || !data.published_at || !isEditorDocument(data.content)) {
+    return null;
+  }
+  return { document: data.content, publishedAt: data.published_at as string };
+}
+
 export type OwnedSite = {
   id: string;
   name: string;
