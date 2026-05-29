@@ -86,7 +86,7 @@ importers:
     devDependencies:
       '@supabase/supabase-js':
         specifier: ^2.106.1
-        version: 2.106.1
+        version: 2.106.2
       dotenv-cli:
         specifier: ^11.0.0
         version: 11.0.0
