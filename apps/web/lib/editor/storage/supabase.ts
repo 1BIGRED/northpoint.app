@@ -128,6 +128,36 @@ export async function publishDocument(
   }
 }
 
+export type OwnedSite = {
+  id: string;
+  name: string;
+  status: string;
+  domain: string | null;
+};
+
+// Fetch a single site by id, scoped to the current user. RLS (the
+// sites_owner_all policy) is the authority here: a row comes back ONLY
+// when the authenticated user owns it, so a null result means "missing
+// or not yours" — callers treat both as a 404. This is the server-side
+// ownership check for the editor route.
+export async function getOwnedSite(siteId: string): Promise<OwnedSite | null> {
+  const supabase = await getSupabaseServer();
+  const { data, error } = await supabase
+    .from("sites")
+    .select("id, name, status, domain")
+    .eq("id", siteId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return {
+    id: data.id as string,
+    name: data.name as string,
+    status: data.status as string,
+    domain: (data.domain as string | null) ?? null,
+  };
+}
+
 // Pick the first non-deleted site owned by the current authenticated
 // user. /spike/editor uses this when no siteId query param is provided
 // so the developer doesn't have to look up UUIDs.
