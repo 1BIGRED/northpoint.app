@@ -4,6 +4,8 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+// /app is just an entry point now — the real home is the sites list, which
+// also handles the onboarding redirect for first-time users.
 export default async function AppHomePage() {
   const supabase = await getSupabaseServer();
   const {
@@ -11,22 +13,5 @@ export default async function AppHomePage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
-
-  return (
-    <main className="mx-auto max-w-2xl space-y-4 p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Logged in</h1>
-      <p className="text-sm text-muted-foreground">
-        Logged in as <span className="font-mono">{user.email}</span>. Onboarding
-        ships in Group C.
-      </p>
-      <form action="/api/auth/sign-out" method="post">
-        <button
-          type="submit"
-          className="text-sm underline underline-offset-4 hover:no-underline"
-        >
-          Sign out
-        </button>
-      </form>
-    </main>
-  );
+  redirect("/app/sites");
 }
