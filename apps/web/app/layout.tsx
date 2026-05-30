@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "{{PRODUCT_NAME}}",
+  title: "Northpoint",
   description: "Website editor with an AI brain.",
 };
 

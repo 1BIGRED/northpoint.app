@@ -69,7 +69,7 @@ export function ChatPanel({
         processed.current.add(id);
         if (part.output?.ok) {
           applied = true;
-          toast(part.input?.summary ?? "{{PRODUCT_NAME}} updated your page");
+          toast(part.input?.summary ?? "Northpoint updated your page");
         }
       }
     }

@@ -114,7 +114,7 @@ Steps to import the repo and reach a green production deploy:
 
 ## Known quirks
 
-- **Page `<title>` is the literal string `{{PRODUCT_NAME}}`** in production — intentional per `CLAUDE.md` §1 (placeholder that will be search-replaced when the real product name lands). Looks odd in a browser tab but is correct.
+- **Page `<title>` now reads "Northpoint."** (Previously the literal placeholder `{{PRODUCT_NAME}}` per `CLAUDE.md` §1; the placeholder has since been replaced with the product name.)
 - **`favicon.ico` 404** on every page — no favicon committed yet. Cosmetic; resolves when branding lands.
 - **Vercel auto-suffix in URL** (`-web` from Root Directory `apps/web`) — see URL patterns above. Disappears with a custom domain.
 - **First-build env-var warning from Turborepo:** the Vercel build log showed Turbo didn't know about the Supabase env vars and Next.js had to read them via its own env loading. Functionally correct (Supabase is connected and `/debug/supabase` is green), but messy enough that it's getting fixed in a follow-up PR by declaring the three vars under `tasks.build.env` in `turbo.json`.

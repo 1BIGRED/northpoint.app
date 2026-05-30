@@ -14,7 +14,7 @@ const getPage = cache((siteId: string) => loadPublishedDocument(siteId, PATH));
 
 function pageTitle(doc: { root?: Record<string, unknown> }): string {
   const t = doc.root?.title;
-  return typeof t === "string" && t.trim() ? t : "{{PRODUCT_NAME}} site";
+  return typeof t === "string" && t.trim() ? t : "Northpoint site";
 }
 
 function pageDescription(doc: { root?: Record<string, unknown> }): string | undefined {

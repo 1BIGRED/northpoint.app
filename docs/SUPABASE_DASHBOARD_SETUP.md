@@ -15,7 +15,7 @@ Until these are enabled, B2/B3 auth flows will fail even if the code is correct.
 ### Email templates (optional, before beta)
 **Where:** Authentication → Email Templates
 
-The default templates work but say "Supabase" in the from name. Before sending invites to beta testers, customize the "Confirm signup" and "Magic link" templates to use the product placeholder (`{{PRODUCT_NAME}}` for now).
+The default templates work but say "Supabase" in the from name. Before sending invites to beta testers, customize the "Confirm signup" and "Magic link" templates to use the product name ("Northpoint").
 
 ## Notes
 

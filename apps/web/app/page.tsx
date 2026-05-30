@@ -35,7 +35,7 @@ export default function HomePage() {
     <main className="mx-auto max-w-3xl space-y-8 p-8">
       <header className="space-y-2">
         <h1 className="text-4xl font-semibold tracking-tight">
-          {"{{PRODUCT_NAME}}"}
+          Northpoint
         </h1>
         <p className="text-muted-foreground">
           Tailwind v4 + shadcn/ui wired up. Components live in{" "}
