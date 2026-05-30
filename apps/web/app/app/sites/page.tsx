@@ -70,15 +70,23 @@ export default async function SitesListPage() {
         </form>
       </div>
 
-      <section className="rounded-lg border p-4">
-        <div className="flex items-center justify-between gap-4">
+      <section className="space-y-4 rounded-lg border p-4">
+        <div>
           <h2 className="text-sm font-medium">Create a new site</h2>
+          <form action={createSite} className="mt-3 flex gap-2">
+            <Input name="name" placeholder="Site name (e.g. BC Glass & Tint)" />
+            <Button type="submit">Create new site</Button>
+          </form>
+        </div>
+        <div className="flex items-center justify-between gap-4 border-t pt-4">
+          <div>
+            <h2 className="text-sm font-medium">Have an existing site?</h2>
+            <p className="text-xs text-muted-foreground">
+              Import its name, hours, and contact info as an editable draft.
+            </p>
+          </div>
           <ImportSiteButton />
         </div>
-        <form action={createSite} className="mt-3 flex gap-2">
-          <Input name="name" placeholder="Site name (e.g. BC Glass & Tint)" />
-          <Button type="submit">Create new site</Button>
-        </form>
       </section>
 
       {sites.length === 0 ? (
