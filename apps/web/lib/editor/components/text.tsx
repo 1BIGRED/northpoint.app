@@ -15,8 +15,11 @@ export const textBlock: ComponentDefinition<TextProps> = {
     level: "h2",
   },
   fields: {
-    heading: { kind: "text", label: "Heading" },
-    body: { kind: "textarea", label: "Body" },
+    // Heading + body are edit-on-canvas: click the text in the preview to
+    // type directly, no side-panel round-trip. (The Text block is the only
+    // block with inline editing; Hours/Image/Button stay panel-only.)
+    heading: { kind: "text", label: "Heading", inlineEditable: true },
+    body: { kind: "textarea", label: "Body", inlineEditable: true },
     level: {
       kind: "select",
       label: "Heading level",

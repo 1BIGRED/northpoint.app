@@ -17,7 +17,9 @@ const fakeRegistry: ComponentRegistry = {
     label: "Text block",
     defaultProps: { heading: "Hi", level: "h2" },
     fields: {
-      heading: { kind: "text", label: "Heading" },
+      heading: { kind: "text", label: "Heading", inlineEditable: true },
+      summary: { kind: "textarea", label: "Summary", inlineEditable: true },
+      cta: { kind: "text", label: "CTA" },
       website: { kind: "url", label: "Website" },
       level: {
         kind: "select",
@@ -61,6 +63,18 @@ describe("buildPuckConfig", () => {
     // url has no first-class Puck field — it maps to text.
     expect(fields.website).toMatchObject({ type: "text", label: "Website" });
     expect(fields.count).toMatchObject({ type: "number", min: 0, max: 10 });
+  });
+
+  it("maps inlineEditable text/textarea fields to Puck contentEditable", () => {
+    // Edit-on-canvas opt-in: only fields that asked for it get contentEditable.
+    expect(fields.heading).toMatchObject({ type: "text", contentEditable: true });
+    expect(fields.summary).toMatchObject({ type: "textarea", contentEditable: true });
+  });
+
+  it("leaves contentEditable off for fields that didn't opt in", () => {
+    // A plain text field is panel-only — contentEditable must be falsy so Puck
+    // doesn't make it edit-in-place.
+    expect(fields.cta.contentEditable).toBeFalsy();
   });
 
   it("preserves select options", () => {

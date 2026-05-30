@@ -11,9 +11,14 @@ import type { ComponentDefinition, ComponentRegistry, EditorDocument, Field } fr
 function toPuckField(field: Field): PuckField {
   switch (field.kind) {
     case "text":
-      return { type: "text", label: field.label };
+      // Puck's `contentEditable` field flag turns the rendered value into an
+      // edit-in-place target on the canvas (hover/focus → plaintext editing,
+      // committed straight back to the prop and reflected in the side panel).
+      // It is an editor-only transform — the RSC published render ignores it,
+      // so visitors never receive editable spans.
+      return { type: "text", label: field.label, contentEditable: field.inlineEditable };
     case "textarea":
-      return { type: "textarea", label: field.label };
+      return { type: "textarea", label: field.label, contentEditable: field.inlineEditable };
     case "url":
       // Puck has no first-class URL field; "text" is the practical match.
       return { type: "text", label: field.label };
