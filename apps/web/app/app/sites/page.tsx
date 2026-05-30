@@ -8,6 +8,7 @@ import { getCurrentAccount, getProfileForAccount } from "@/lib/account";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
 import { createSite } from "./actions";
+import { ImportSiteButton } from "./import-site-button";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,10 @@ export default async function SitesListPage() {
       </div>
 
       <section className="rounded-lg border p-4">
-        <h2 className="text-sm font-medium">Create a new site</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-sm font-medium">Create a new site</h2>
+          <ImportSiteButton />
+        </div>
         <form action={createSite} className="mt-3 flex gap-2">
           <Input name="name" placeholder="Site name (e.g. BC Glass & Tint)" />
           <Button type="submit">Create new site</Button>

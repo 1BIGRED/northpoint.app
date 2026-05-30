@@ -3,6 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentAccount } from "@/lib/account";
+import {
+  buildDocumentFromParsed,
+  parseSiteHtml,
+} from "@/lib/import/parse-site";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
 // Create a new site for the current user's account, then drop them into the
@@ -31,4 +35,124 @@ export async function createSite(formData: FormData): Promise<void> {
 
   // Straight into the editor (route ships in E3 / #23).
   redirect(`/app/sites/${data.id}/edit`);
+}
+
+const FETCH_TIMEOUT_MS = 10_000;
+const MAX_HTML_BYTES = 5_000_000; // 5 MB guard against pathological pages.
+
+export type ImportSiteResult =
+  | { ok: true; siteId: string }
+  | { ok: false; error: string };
+
+// Normalize user-entered URLs ("bcglassandtint.com" → "https://bcglassandtint.com").
+function normalizeUrl(raw: string): URL | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const withProtocol = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+// Import an existing site from a URL: fetch its HTML, extract structured
+// content (title/hours/contact), and seed a new site + home page whose
+// draft_content is the imported document. First pass — content only, no
+// images or visual replication (Group D1). Robust to bad URLs / fetch
+// failures: returns a structured error instead of throwing.
+export async function importSiteFromUrl(
+  rawUrl: string,
+): Promise<ImportSiteResult> {
+  const url = normalizeUrl(rawUrl);
+  if (!url) {
+    return { ok: false, error: "That doesn't look like a valid website URL." };
+  }
+
+  const account = await getCurrentAccount();
+  if (!account) {
+    return { ok: false, error: "No account found — finish onboarding first." };
+  }
+
+  // Fetch with a timeout and a real User-Agent (some hosts 403 a blank UA).
+  let html: string;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        redirect: "follow",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (compatible; {{PRODUCT_NAME}}-importer/1.0)",
+          Accept: "text/html,application/xhtml+xml",
+        },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: `Couldn't reach that site (HTTP ${response.status}).`,
+      };
+    }
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("html")) {
+      return { ok: false, error: "That URL didn't return a web page." };
+    }
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > MAX_HTML_BYTES) {
+      return { ok: false, error: "That page is too large to import." };
+    }
+    html = new TextDecoder().decode(buffer);
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
+    return {
+      ok: false,
+      error: aborted
+        ? "That site took too long to respond."
+        : "Couldn't reach that site. Check the URL and try again.",
+    };
+  }
+
+  const parsed = parseSiteHtml(html);
+  const document = buildDocumentFromParsed(parsed);
+  const name = parsed.title ?? parsed.heading ?? url.hostname;
+
+  const supabase = await getSupabaseServer();
+  const { data: site, error: siteError } = await supabase
+    .from("sites")
+    .insert({ account_id: account.id, name, status: "draft" })
+    .select("id")
+    .single();
+  if (siteError || !site) {
+    return {
+      ok: false,
+      error: `Couldn't create the site: ${siteError?.message ?? "no row returned"}`,
+    };
+  }
+
+  // Seed the home page draft with the imported document. RLS
+  // (site_pages_owner_all) confirms the site belongs to the caller.
+  const { error: pageError } = await supabase.from("site_pages").insert({
+    site_id: site.id,
+    path: "/",
+    draft_content: document,
+  });
+  if (pageError) {
+    return {
+      ok: false,
+      error: `Imported the site but couldn't save its page: ${pageError.message}`,
+    };
+  }
+
+  return { ok: true, siteId: site.id as string };
 }
