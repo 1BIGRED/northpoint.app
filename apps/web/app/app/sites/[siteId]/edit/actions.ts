@@ -9,6 +9,7 @@ import {
   saveDocument,
   unpublishDocument,
 } from "@/lib/editor/storage/supabase";
+import { getSupabaseServer } from "@/lib/supabase/server";
 
 // Server actions for the real editor route. Thin wrappers over the
 // RLS-enforced storage layer — every call runs as the user's own session,
@@ -55,4 +56,24 @@ export async function unpublishAction(
   // Drop the now-hidden page from the public render cache (Group E6).
   revalidatePath(`/sites/${siteId}`);
   return { ok: true };
+}
+
+// Rename a site. Goes through the RLS session client (sites_owner_all), so it
+// can only rename a site the caller owns. Blank names fall back to "Untitled
+// site" rather than erroring, since this is an inline edit-in-place.
+export async function renameSiteAction(
+  siteId: string,
+  name: string,
+): Promise<{ ok: true; name: string }> {
+  const clean = name.trim() || "Untitled site";
+  const supabase = await getSupabaseServer();
+  const { error } = await supabase
+    .from("sites")
+    .update({ name: clean, updated_at: new Date().toISOString() })
+    .eq("id", siteId)
+    .is("deleted_at", null);
+  if (error) {
+    throw new Error(`renameSite failed: ${error.message}`);
+  }
+  return { ok: true, name: clean };
 }

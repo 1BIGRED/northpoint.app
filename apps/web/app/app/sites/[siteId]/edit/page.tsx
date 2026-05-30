@@ -7,6 +7,7 @@ import { editor } from "@/lib/editor";
 import { getOwnedSite, loadDocument } from "@/lib/editor/storage/supabase";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
+import { EditableSiteName } from "./editable-site-name";
 import { SiteEditor } from "./site-editor";
 
 export const dynamic = "force-dynamic";
@@ -48,22 +49,34 @@ export default async function SiteEditPage({
     <main className="flex min-h-screen flex-col bg-background">
       <header className="flex h-14 items-center justify-between border-b bg-white px-6">
         <div className="flex items-center gap-4">
-          {/* TODO(B1): point at /app/sites once the sites list ships. */}
           <Link
-            href="/app"
+            href="/app/sites"
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             ← Sites
           </Link>
           <div className="flex items-baseline gap-2">
-            <h1 className="text-base font-semibold tracking-tight">
-              {site.name}
-            </h1>
+            <EditableSiteName siteId={siteId} initialName={site.name} />
             <span className="text-xs uppercase tracking-wider text-muted-foreground">
               {site.status}
             </span>
           </div>
         </div>
+        {/* Preview the live public page — only meaningful once published. */}
+        {initial.publishedAt ? (
+          <a
+            href={`/sites/${siteId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Preview live site ↗
+          </a>
+        ) : (
+          <span className="text-sm text-muted-foreground" title="Publish this site to get a live preview link.">
+            Publish to preview
+          </span>
+        )}
       </header>
       <SiteEditor
         siteId={siteId}

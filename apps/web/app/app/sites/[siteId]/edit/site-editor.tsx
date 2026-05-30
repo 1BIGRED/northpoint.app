@@ -70,6 +70,9 @@ export function SiteEditor({
   const [chatOpen, setChatOpen] = useState(false);
   const [editorDoc, setEditorDoc] = useState<EditorDocument>(initialDocument);
   const [editorKey, setEditorKey] = useState(0);
+  // Tracks an empty canvas for the empty-state hint. Updated on every change
+  // (manual edits flow through a ref, not editorDoc, so derive it here).
+  const [isEmpty, setIsEmpty] = useState(initialDocument.blocks.length === 0);
 
   // Trailing-edge throttle: coalesce a burst of edits into one save fired
   // SAVE_THROTTLE_MS after the latest change.
@@ -108,6 +111,7 @@ export function SiteEditor({
   const onChange = useCallback(
     (doc: EditorDocument) => {
       latestDocument.current = doc;
+      setIsEmpty(doc.blocks.length === 0);
       if (pendingTimer.current) clearTimeout(pendingTimer.current);
       pendingTimer.current = setTimeout(flush, SAVE_THROTTLE_MS);
     },
@@ -154,6 +158,7 @@ export function SiteEditor({
       .then((result) => {
         latestDocument.current = result.document;
         setEditorDoc(result.document);
+        setIsEmpty(result.document.blocks.length === 0);
         setEditorKey((k) => k + 1);
         setSavedAt(new Date().toISOString());
         setSaveState("saved");
@@ -192,6 +197,21 @@ export function SiteEditor({
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="min-w-0 flex-1">
+          {/* Empty-canvas hint pointing at the two ways to add content. Sits
+              above the editor so it doesn't fight Puck's own canvas DOM. */}
+          {isEmpty ? (
+            <p className="border-b bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
+              Your page is empty. Drag blocks from the left, or use the{" "}
+              <button
+                type="button"
+                onClick={() => setChatOpen(true)}
+                className="font-medium underline underline-offset-2"
+              >
+                Ask
+              </button>{" "}
+              panel on the right to add content.
+            </p>
+          ) : null}
           <Editor
             key={editorKey}
             registry={registry}
