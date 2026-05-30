@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentAccount, getProfileForAccount } from "@/lib/account";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
+import { AppNav } from "../app-nav";
 import { CreateSiteButton } from "./create-site-button";
 import { ImportSiteButton } from "./import-site-button";
 import { SiteListItem } from "./site-list-item";
@@ -48,7 +49,9 @@ export default async function SitesListPage() {
   const sites = (data ?? []) as SiteRow[];
 
   return (
-    <main className="mx-auto max-w-3xl space-y-8 px-6 py-12">
+    <>
+      <AppNav />
+      <main className="mx-auto max-w-3xl space-y-8 px-6 py-12">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Your sites</h1>
@@ -104,6 +107,7 @@ export default async function SitesListPage() {
           ))}
         </ul>
       )}
-    </main>
+      </main>
+    </>
   );
 }
