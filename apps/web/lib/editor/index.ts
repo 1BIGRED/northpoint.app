@@ -18,6 +18,8 @@ export { registry } from "./components";
 
 export { Editor, type EditorProps } from "./Editor";
 
+export { normalizeDocument } from "./normalize";
+
 export { RenderDocument, type RenderDocumentProps } from "./Render";
 
 export {

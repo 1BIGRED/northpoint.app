@@ -52,7 +52,9 @@ export const hoursBlock: ComponentDefinition<HoursProps> = {
     <div className="space-y-3 py-4">
       <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
-        {days.map((d) => (
+        {/* Defensive: tolerate a missing/non-array `days` so an incomplete
+            block can't crash the page with ".map of undefined". */}
+        {(Array.isArray(days) ? days : []).map((d) => (
           <div key={d.day} className="contents">
             <dt className="font-medium">{d.day}</dt>
             <dd className="text-muted-foreground">{fmt(d.open, d.close)}</dd>

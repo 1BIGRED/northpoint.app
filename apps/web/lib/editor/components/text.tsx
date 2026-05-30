@@ -28,13 +28,18 @@ export const textBlock: ComponentDefinition<TextProps> = {
     },
   },
   render: ({ heading, body, level }) => {
+    // Defensive: fall back to a valid heading level. A missing/invalid `level`
+    // would make HeadingTag undefined and crash React ("Element type is
+    // invalid"). normalizeDocument should fill this, but the renderer must not
+    // assume complete props — one bad block must never blank the page.
+    const safeLevel = level === "h1" || level === "h3" ? level : "h2";
     const headingClass =
-      level === "h1"
+      safeLevel === "h1"
         ? "text-4xl font-semibold tracking-tight"
-        : level === "h2"
+        : safeLevel === "h2"
           ? "text-2xl font-semibold tracking-tight"
           : "text-xl font-semibold tracking-tight";
-    const HeadingTag = level;
+    const HeadingTag = safeLevel;
     return (
       <div className="space-y-2 py-4">
         <HeadingTag className={headingClass}>{heading}</HeadingTag>

@@ -1,6 +1,7 @@
 import { applyPatch, type Operation } from "rfc6902";
 
 import { registry } from "./components";
+import { normalizeDocument } from "./normalize";
 import type { Block, EditorDocument } from "./types";
 
 // applyAIEdit — the AI's only write path into an editor document.
@@ -121,5 +122,11 @@ export function applyAIEdit(
     return { ok: false, error: `patch produced an invalid document: ${invalid}` };
   }
 
-  return { ok: true, document: draft };
+  // 4) Fill any missing props with registry defaults. A patch can add a block
+  //    with valid-but-incomplete props (e.g. a Text with only {heading}); left
+  //    as-is that crashes the renderer on the next load. Normalizing here means
+  //    every document we persist is complete and renderable. See normalize.ts.
+  const document_ = normalizeDocument(draft);
+
+  return { ok: true, document: document_ };
 }
