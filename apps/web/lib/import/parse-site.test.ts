@@ -147,8 +147,14 @@ describe("buildDocumentFromParsed", () => {
     expect(hero.props.level).toBe("h1");
     expect(hero.props.heading).toBe("BC Glass & Tint");
 
-    const button = doc.blocks.find((b) => b.type === "Button");
-    expect(button?.props.href).toBe("tel:+12505551234");
+    // Both phone and email surface as buttons (phone primary, email secondary).
+    const buttons = doc.blocks.filter((b) => b.type === "Button");
+    expect(buttons.map((b) => b.props.href)).toEqual([
+      "tel:+12505551234",
+      "mailto:info@bcglass.example",
+    ]);
+    expect(buttons[0].props.variant).toBe("primary");
+    expect(buttons[1].props.variant).toBe("secondary");
 
     // Every block has a unique id.
     const ids = doc.blocks.map((b) => b.id);

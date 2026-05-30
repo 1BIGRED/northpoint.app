@@ -200,6 +200,10 @@ export function buildDocumentFromParsed(parsed: ParsedSite): EditorDocument {
     props: { title: "Hours", days: parsed.hours ?? DEFAULT_HOURS },
   });
 
+  // Surface every contact method we found as its own actionable button. A
+  // shop usually has both a phone and an email; importing should carry both
+  // (the phone is primary). If neither was found, no contact button — the
+  // user adds one in the editor.
   if (parsed.phone) {
     blocks.push({
       id: id(),
@@ -210,14 +214,16 @@ export function buildDocumentFromParsed(parsed: ParsedSite): EditorDocument {
         variant: "primary",
       },
     });
-  } else if (parsed.email) {
+  }
+  if (parsed.email) {
     blocks.push({
       id: id(),
       type: "Button",
       props: {
-        label: "Get a quote",
+        label: parsed.phone ? "Email us" : "Get a quote",
         href: `mailto:${parsed.email}`,
-        variant: "primary",
+        // Secondary when a primary call button is already present.
+        variant: parsed.phone ? "secondary" : "primary",
       },
     });
   }
