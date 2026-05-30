@@ -28,6 +28,14 @@ export {
   type ApplyAIEditResult,
 } from "./applyAIEdit";
 
+export {
+  TEMPLATES,
+  buildTemplateDocument,
+  isTemplateId,
+  type TemplateId,
+  type TemplateMeta,
+} from "./templates";
+
 import { registry } from "./components";
 import type { BlockType, EditorAPI, EditorDocument } from "./types";
 
