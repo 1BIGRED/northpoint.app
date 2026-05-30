@@ -74,3 +74,30 @@ export async function loadChatMessages(
     return [];
   }
 }
+
+// A chat message shaped for the AI SDK's useChat (a UIMessage). `parts` is the
+// stored parts array. Kept loosely typed here (server → client serialization);
+// the panel casts it to UIMessage.
+export type ChatHistoryMessage = {
+  id: string;
+  role: "user" | "assistant";
+  parts: unknown[];
+};
+
+// Load the transcript as seed messages for the chat panel. Only user and
+// assistant rows are replayed — `tool` rows are a training-data record of
+// each edit (their content is {patch,ok,...}), not conversational turns, so
+// they'd corrupt the UI/model history. Malformed rows are skipped so one bad
+// row can't break loading. RLS (the session client) scopes this to the owner.
+export async function loadChatHistory(
+  siteId: string,
+): Promise<ChatHistoryMessage[]> {
+  const rows = await loadChatMessages(siteId);
+  const out: ChatHistoryMessage[] = [];
+  for (const row of rows) {
+    if (row.role !== "user" && row.role !== "assistant") continue;
+    if (!Array.isArray(row.content)) continue; // user/assistant store a parts[]
+    out.push({ id: row.id, role: row.role, parts: row.content });
+  }
+  return out;
+}

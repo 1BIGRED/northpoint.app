@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { isAIConfigured } from "@/lib/ai/anthropic";
+import { loadChatHistory } from "@/lib/ai/chat-storage";
 import { editor } from "@/lib/editor";
 import { getOwnedSite, loadDocument } from "@/lib/editor/storage/supabase";
 import { getSupabaseServer } from "@/lib/supabase/server";
@@ -39,6 +40,9 @@ export default async function SiteEditPage({
   }
 
   const initial = await loadDocument(siteId, DEFAULT_PATH);
+  // Seed the chat panel with this site's prior transcript so the conversation
+  // persists across reloads. Empty array when AI is off or there's no history.
+  const chatHistory = isAIConfigured() ? await loadChatHistory(siteId) : [];
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
@@ -67,6 +71,7 @@ export default async function SiteEditPage({
         initialDocument={initial.document ?? editor.emptyDocument()}
         initialPublishedAt={initial.publishedAt}
         aiEnabled={isAIConfigured()}
+        initialChatMessages={chatHistory}
       />
     </main>
   );
