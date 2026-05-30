@@ -1,14 +1,24 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import type { EditorDocument } from "@/lib/editor";
 import {
+  createPage,
   loadDocument,
   publishDocument,
   saveDocument,
   unpublishDocument,
 } from "@/lib/editor/storage/supabase";
+import { HOME_PATH, normalizePagePath, slugFromPath } from "@/lib/site-pages/path";
+
+// The public URL for a (site, path): home is /sites/<id>, others are
+// /sites/<id>/<slug>. Used to bust the right render cache on publish/unpublish.
+function publicPath(siteId: string, path: string): string {
+  const slug = slugFromPath(path);
+  return slug ? `/sites/${siteId}/${slug}` : `/sites/${siteId}`;
+}
 
 // Server actions for the real editor route. Thin wrappers over the
 // RLS-enforced storage layer — every call runs as the user's own session,
@@ -31,8 +41,8 @@ export async function publishAction(
 ): Promise<{ ok: true; publishedAt: string }> {
   await publishDocument(siteId, path);
   const publishedAt = new Date().toISOString();
-  // Bust the public render cache once that route exists (Group E6).
-  revalidatePath(`/sites/${siteId}`);
+  // Bust the public render cache for this specific page.
+  revalidatePath(publicPath(siteId, path));
   return { ok: true, publishedAt };
 }
 
@@ -52,7 +62,34 @@ export async function unpublishAction(
   path: string,
 ): Promise<{ ok: true }> {
   await unpublishDocument(siteId, path);
-  // Drop the now-hidden page from the public render cache (Group E6).
-  revalidatePath(`/sites/${siteId}`);
+  // Drop the now-hidden page from the public render cache.
+  revalidatePath(publicPath(siteId, path));
   return { ok: true };
+}
+
+// Create a new page from a user-entered name and switch the editor to it.
+// Normalizes the name to a canonical "/slug" path, rejects names that
+// collapse to nothing or to the home path, and redirects into the new page
+// on success. Returns a structured error otherwise so the dialog can show it.
+export async function createPageAction(
+  siteId: string,
+  rawName: string,
+): Promise<{ ok: false; error: string }> {
+  const path = normalizePagePath(rawName);
+  if (!path) {
+    return { ok: false, error: "Enter a page name (letters or numbers)." };
+  }
+  if (path === HOME_PATH) {
+    return { ok: false, error: "That name is reserved for the home page." };
+  }
+
+  const result = await createPage(siteId, path);
+  if (!result.ok) {
+    return result;
+  }
+
+  revalidatePath(`/app/sites/${siteId}/edit`);
+  // Switch the editor to the freshly created page. redirect() throws to
+  // navigate, so it runs only after the create succeeds.
+  redirect(`/app/sites/${siteId}/edit?path=${encodeURIComponent(path)}`);
 }
