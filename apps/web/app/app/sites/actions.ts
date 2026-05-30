@@ -90,7 +90,7 @@ export async function importSiteFromUrl(
         redirect: "follow",
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (compatible; {{PRODUCT_NAME}}-importer/1.0)",
+            "Mozilla/5.0 (compatible; Northpoint-importer/1.0)",
           Accept: "text/html,application/xhtml+xml",
         },
       });
