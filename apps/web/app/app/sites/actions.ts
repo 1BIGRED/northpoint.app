@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getCurrentAccount } from "@/lib/account";
@@ -35,6 +36,54 @@ export async function createSite(formData: FormData): Promise<void> {
 
   // Straight into the editor (route ships in E3 / #23).
   redirect(`/app/sites/${data.id}/edit`);
+}
+
+export type SiteActionResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+// Rename a site from the sites list. Runs through the session client, so the
+// sites_owner_all RLS policy guarantees the caller can only rename their own
+// site (a non-owned id matches zero rows). Blank names fall back rather than
+// erroring — this is an inline edit, not a form with validation.
+export async function renameSite(
+  siteId: string,
+  name: string,
+): Promise<SiteActionResult> {
+  const clean = name.trim() || "Untitled site";
+  const supabase = await getSupabaseServer();
+  const { error } = await supabase
+    .from("sites")
+    .update({ name: clean, updated_at: new Date().toISOString() })
+    .eq("id", siteId)
+    .is("deleted_at", null);
+  if (error) {
+    return { ok: false, error: `Couldn't rename the site: ${error.message}` };
+  }
+  revalidatePath("/app/sites");
+  return { ok: true };
+}
+
+// Delete a site from the sites list. This is a SOFT delete (sets deleted_at)
+// per CLAUDE.md §5 "never hard delete user data" — every sites query already
+// filters `deleted_at IS NULL`, so the site disappears from the list and its
+// public page stops resolving, but the row (and its site_pages/chat history)
+// survive and can be restored. Runs through the session client → RLS scopes it
+// to the caller's own site.
+export async function deleteSite(siteId: string): Promise<SiteActionResult> {
+  const supabase = await getSupabaseServer();
+  const { error } = await supabase
+    .from("sites")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", siteId)
+    .is("deleted_at", null);
+  if (error) {
+    return { ok: false, error: `Couldn't delete the site: ${error.message}` };
+  }
+  // Drop the now-hidden public page from the render cache.
+  revalidatePath("/app/sites");
+  revalidatePath(`/sites/${siteId}`);
+  return { ok: true };
 }
 
 const FETCH_TIMEOUT_MS = 10_000;

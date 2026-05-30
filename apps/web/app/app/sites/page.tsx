@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@northpoint/ui/components/button";
@@ -9,6 +8,7 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 
 import { createSite } from "./actions";
 import { ImportSiteButton } from "./import-site-button";
+import { SiteListItem } from "./site-list-item";
 
 export const dynamic = "force-dynamic";
 
@@ -96,23 +96,12 @@ export default async function SitesListPage() {
       ) : (
         <ul className="divide-y rounded-lg border">
           {sites.map((site) => (
-            <li
+            <SiteListItem
               key={site.id}
-              className="flex items-center justify-between gap-4 px-4 py-3"
-            >
-              <div>
-                <div className="font-medium">{site.name}</div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">
-                  {site.status}
-                </div>
-              </div>
-              <Link
-                href={`/app/sites/${site.id}/edit`}
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-              >
-                Open editor
-              </Link>
-            </li>
+              id={site.id}
+              name={site.name}
+              status={site.status}
+            />
           ))}
         </ul>
       )}
