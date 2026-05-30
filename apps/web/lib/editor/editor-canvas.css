@@ -1,0 +1,31 @@
+/* Editor-only canvas affordances for block discoverability.
+ *
+ * Imported by Editor.tsx, so it lives in the editor host document. Puck clones
+ * host <style>/<link> tags into its preview iframe (CopyHostStyles), so these
+ * rules reach the rendered blocks on the canvas. It is NOT imported by the
+ * published renderer (Render.tsx), so visitors never get these styles.
+ *
+ * Outlines use `outline` (never border/box-shadow that affect box size) so they
+ * add no layout shift and don't interfere with drag-and-drop hit-testing.
+ * Puck draws its own selection overlay on the active block; these rules add the
+ * lightweight hover hint + cursor that tell a user a block is interactive. */
+
+[data-puck-component] {
+  cursor: pointer;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  transition: outline-color 80ms ease;
+}
+
+[data-puck-component]:hover {
+  outline-color: rgba(0, 0, 0, 0.35);
+}
+
+/* Inline-editable text (Puck's contentEditable spans) gets a text caret on
+ * hover/focus so a Text block reads as type-in-place, distinct from the
+ * pointer used for whole-block selection. */
+[data-puck-component] [contenteditable]:hover,
+[data-puck-component] [contenteditable]:focus {
+  cursor: text;
+  outline: none;
+}

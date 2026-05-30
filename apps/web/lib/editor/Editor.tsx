@@ -8,6 +8,7 @@
 // module.
 
 import "@puckeditor/core/puck.css";
+import "./editor-canvas.css";
 
 import { Puck } from "@puckeditor/core";
 import { useMemo } from "react";

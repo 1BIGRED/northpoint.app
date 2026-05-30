@@ -49,8 +49,13 @@ export type FieldSchema<TProps extends BlockProps> = {
 };
 
 export type Field =
-  | { kind: "text"; label?: string }
-  | { kind: "textarea"; label?: string }
+  // `inlineEditable` opts a text/textarea field into edit-on-canvas: in the
+  // editor the rendered value becomes click-to-edit in place (the adapter maps
+  // this to the underlying editor's native inline-edit support). It has no
+  // effect on the published page. Leave it off for fields better edited in the
+  // side panel (e.g. a Button's href).
+  | { kind: "text"; label?: string; inlineEditable?: boolean }
+  | { kind: "textarea"; label?: string; inlineEditable?: boolean }
   | { kind: "url"; label?: string }
   | { kind: "select"; label?: string; options: ReadonlyArray<{ label: string; value: string }> }
   | { kind: "number"; label?: string; min?: number; max?: number }
