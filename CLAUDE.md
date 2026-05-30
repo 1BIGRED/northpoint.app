@@ -24,6 +24,7 @@ A public SaaS — a website editor with an AI brain, sold to small businesses an
 6. **Run Playwright QA before declaring a UI task done.** See section 7.
 7. **Branch naming:** `feature/<short-slug>`, `fix/<short-slug>`, `chore/<short-slug>`. No `main` work.
 8. **One PR per atomic task.** Don't bundle unrelated changes.
+9. **Verify the base branch before merging a stacked PR.** When PRs are stacked (PR B opened against feature branch A instead of `main`), GitHub does **not** always auto-retarget B's base to `main` when A merges — and if you click "Merge" while B's base is still A, the changes land in branch A, **not** `main`. That silently leaves `main` missing the work even though the PR shows "merged." Before merging any stacked PR, confirm on the PR page that its **base is `main`** (retarget it if not), and after merging the whole stack, confirm the expected files actually exist on `main`. This bit us once: the editor stack (#23/#24/#25) merged into `feat/e2-editor-persistence` instead of `main`, so `main` was missing the editor route, publishing flow, and public render until a restore PR.
 
 ### Handling credentials in chat
 
@@ -294,9 +295,10 @@ Hours of guessing > 30 seconds of asking.
 
 ## 13. Version
 
-This file is at v1.2. Update the version number when making significant changes. The founder is the only person who approves changes to this file.
+This file is at v1.3. Update the version number when making significant changes. The founder is the only person who approves changes to this file.
 
 **Changelog:**
+- **v1.3** — Added §2 rule 9: verify a stacked PR's base is `main` before merging (GitHub doesn't always auto-retarget), after a stack merged into the wrong base and left `main` missing the editor route / publishing / public render.
 - **v1.2** — Documented Drizzle migration numbering convention for parallel branches (collisions resolved via rebase + regenerate, not manual renumber). Updated Puck package reference from deprecated `@measured/puck` to `@puckeditor/core`. Added §7 subsection on Claude Code Auto Mode + `.claude/settings.json` + classifier behavior.
 - **v1.1** — Strategic pivot: drop FastAPI for Phase 1 (Vercel AI SDK v6 replaces it inside Next.js), build editor on Puck (MIT) starting with a go/no-go spike, single-tenant alpha (no signup form), business-only onboarding (Personal deferred to Phase 2, schema-additive), GBP atomic-hours demo added as new Group F. Editor abstraction rule added so Puck swap stays contained.
 - **v1.0** — Initial CLAUDE.md.

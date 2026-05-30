@@ -89,9 +89,12 @@ export async function saveDocument(
   }
 }
 
-// Publish: copy draft_content into content + stamp published_at. We
-// always publish the server-side draft, not whatever the client thinks
-// it is — that way a stale tab can't republish an older version.
+// Publish: copy the current document into content + stamp published_at.
+// We publish the server-side state, not whatever the client thinks it is —
+// that way a stale tab can't republish an older version. The source is
+// `draft_content ?? content`, mirroring what loadDocument shows the editor:
+// a page with edits publishes the draft; a page with only previously
+// published content (e.g. seeded, or being re-published) publishes that.
 export async function publishDocument(
   siteId: string,
   path: string,
@@ -99,7 +102,7 @@ export async function publishDocument(
   const supabase = await getSupabaseServer();
   const { data, error: readError } = await supabase
     .from("site_pages")
-    .select("draft_content")
+    .select("draft_content, content")
     .eq("site_id", siteId)
     .eq("path", path)
     .is("deleted_at", null)
@@ -107,15 +110,16 @@ export async function publishDocument(
   if (readError) {
     throw new Error(`publishDocument read failed: ${readError.message}`);
   }
-  if (!data?.draft_content) {
-    throw new Error("publishDocument: no draft to publish");
+  const toPublish = data?.draft_content ?? data?.content;
+  if (!toPublish) {
+    throw new Error("publishDocument: nothing to publish");
   }
 
   const now = new Date().toISOString();
   const { error: updateError } = await supabase
     .from("site_pages")
     .update({
-      content: data.draft_content,
+      content: toPublish,
       published_at: now,
       updated_at: now,
     })
@@ -125,6 +129,92 @@ export async function publishDocument(
 
   if (updateError) {
     throw new Error(`publishDocument update failed: ${updateError.message}`);
+  }
+}
+
+export type PublishedPage = {
+  document: EditorDocument;
+  publishedAt: string;
+};
+
+// Load a PUBLISHED page for the public render route. Reads only `content`
+// (never the draft) and only when published_at is set. Returns null when
+// the page doesn't exist or isn't published — the route turns that into a
+// 404. Runs through the ordinary session client: on a public request that
+// client is the `anon` role, and the site_pages_public_read RLS policy
+// (migration 0004) is what makes published rows visible. No service role.
+export async function loadPublishedDocument(
+  siteId: string,
+  path: string,
+): Promise<PublishedPage | null> {
+  const supabase = await getSupabaseServer();
+  const { data, error } = await supabase
+    .from("site_pages")
+    .select("content, published_at")
+    .eq("site_id", siteId)
+    .eq("path", path)
+    .not("published_at", "is", null)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`loadPublishedDocument failed: ${error.message}`);
+  }
+  if (!data || !data.published_at || !isEditorDocument(data.content)) {
+    return null;
+  }
+  return { document: data.content, publishedAt: data.published_at as string };
+}
+
+export type OwnedSite = {
+  id: string;
+  name: string;
+  status: string;
+  domain: string | null;
+};
+
+// Fetch a single site by id, scoped to the current user. RLS (the
+// sites_owner_all policy) is the authority here: a row comes back ONLY
+// when the authenticated user owns it, so a null result means "missing
+// or not yours" — callers treat both as a 404. This is the server-side
+// ownership check for the editor route.
+export async function getOwnedSite(siteId: string): Promise<OwnedSite | null> {
+  const supabase = await getSupabaseServer();
+  const { data, error } = await supabase
+    .from("sites")
+    .select("id, name, status, domain")
+    .eq("id", siteId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return {
+    id: data.id as string,
+    name: data.name as string,
+    status: data.status as string,
+    domain: (data.domain as string | null) ?? null,
+  };
+}
+
+// Unpublish: clear published_at so the public render route stops serving
+// the page (it gates on published_at). We intentionally keep `content`
+// intact — unpublishing hides the page, it doesn't discard the last
+// published snapshot, so re-publishing the current draft stays a one-click
+// action and nothing is lost.
+export async function unpublishDocument(
+  siteId: string,
+  path: string,
+): Promise<void> {
+  const supabase = await getSupabaseServer();
+  const { error } = await supabase
+    .from("site_pages")
+    .update({ published_at: null, updated_at: new Date().toISOString() })
+    .eq("site_id", siteId)
+    .eq("path", path)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`unpublishDocument failed: ${error.message}`);
   }
 }
 
