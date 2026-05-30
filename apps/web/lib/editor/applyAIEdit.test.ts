@@ -71,6 +71,49 @@ describe("applyAIEdit", () => {
     }
   });
 
+  it("applies per-day Hours edits and keeps them through normalization (regression)", () => {
+    // The live bug: patches against the Hours block didn't reflect in state.
+    // Start from an Hours block with the real {day, open, close} shape (all
+    // closed), then set Saturday's hours — the result must carry the values.
+    const doc: EditorDocument = {
+      version: 1,
+      blocks: [
+        {
+          id: "h1",
+          type: "Hours",
+          props: {
+            title: "Hours",
+            days: [
+              { day: "Mon", open: "", close: "" },
+              { day: "Tue", open: "", close: "" },
+              { day: "Wed", open: "", close: "" },
+              { day: "Thu", open: "", close: "" },
+              { day: "Fri", open: "", close: "" },
+              { day: "Sat", open: "", close: "" },
+              { day: "Sun", open: "", close: "" },
+            ],
+          },
+        },
+      ],
+    };
+    const patch: JsonPatch = [
+      { op: "replace", path: "/blocks/0/props/days/5/open", value: "09:00" },
+      { op: "replace", path: "/blocks/0/props/days/5/close", value: "15:00" },
+    ];
+    const result = applyAIEdit(doc, patch);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const days = result.document.blocks[0].props.days as Array<{
+        day: string;
+        open: string;
+        close: string;
+      }>;
+      expect(days[5]).toEqual({ day: "Sat", open: "09:00", close: "15:00" });
+      // normalizeDocument must not clobber the edited values back to defaults.
+      expect(days[0]).toEqual({ day: "Mon", open: "", close: "" });
+    }
+  });
+
   it("rejects a patch that tries to mutate a block id", () => {
     const patch: JsonPatch = [
       { op: "replace", path: "/blocks/0/id", value: "hacked" },
