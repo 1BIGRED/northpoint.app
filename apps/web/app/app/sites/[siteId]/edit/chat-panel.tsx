@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { toast } from "@northpoint/ui/components/sonner";
 
@@ -11,6 +11,9 @@ type Props = {
   // When false, AI is not configured on the server (no ANTHROPIC_API_KEY).
   // The panel renders a friendly, non-blocking notice instead of a composer.
   aiEnabled: boolean;
+  // Prior transcript (user/assistant turns) loaded server-side, used to seed
+  // the conversation so it persists across reloads.
+  initialMessages?: Array<{ id: string; role: "user" | "assistant"; parts: unknown[] }>;
   // Called after the AI successfully applies one or more edits, so the parent
   // can pull the updated document back into the editor canvas.
   onAppliedEdit: () => void;
@@ -32,15 +35,29 @@ function isToolPart(part: AnyPart): boolean {
   return part.type.startsWith("tool-");
 }
 
-export function ChatPanel({ siteId, aiEnabled, onAppliedEdit }: Props) {
+export function ChatPanel({
+  siteId,
+  aiEnabled,
+  initialMessages,
+  onAppliedEdit,
+}: Props) {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, error } = useChat({
+    // Seed the prior transcript so reloading the editor keeps the
+    // conversation. Sending a new message replays this history to the model
+    // too, giving the AI continuity. Computed once on mount.
+    messages: useMemo(
+      () => (initialMessages ?? []) as unknown as UIMessage[],
+      [initialMessages],
+    ),
     transport: new DefaultChatTransport({
       api: `/api/sites/${siteId}/chat`,
     }),
   });
 
   // Fire onAppliedEdit + a toast exactly once per successful apply_patch.
+  // Seeded history is user/assistant text only (no tool-output parts), so it
+  // never triggers this — past edits won't re-fire on reload.
   const processed = useRef<Set<string>>(new Set());
   useEffect(() => {
     let applied = false;

@@ -15,6 +15,8 @@ import { Toaster } from "@northpoint/ui/components/sonner";
 import { Editor, registry, type EditorDocument } from "@/lib/editor";
 import { relativeTime } from "@/lib/relative-time";
 
+import type { ChatHistoryMessage } from "@/lib/ai/chat-storage";
+
 import { ChatPanel } from "./chat-panel";
 import {
   publishAction,
@@ -30,6 +32,8 @@ type Props = {
   initialPublishedAt: string | null;
   // Whether the server has ANTHROPIC_API_KEY configured (gates the AI chat).
   aiEnabled: boolean;
+  // Prior chat transcript, loaded server-side, to seed the chat panel.
+  initialChatMessages: ChatHistoryMessage[];
 };
 
 type SaveState = "idle" | "saving" | "saved" | "retrying" | "error";
@@ -49,6 +53,7 @@ export function SiteEditor({
   initialDocument,
   initialPublishedAt,
   aiEnabled,
+  initialChatMessages,
 }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -199,6 +204,7 @@ export function SiteEditor({
           <ChatPanel
             siteId={siteId}
             aiEnabled={aiEnabled}
+            initialMessages={initialChatMessages}
             onAppliedEdit={onAppliedEdit}
           />
         ) : null}
