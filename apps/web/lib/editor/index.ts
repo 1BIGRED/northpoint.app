@@ -20,6 +20,12 @@ export { Editor, type EditorProps } from "./Editor";
 
 export { RenderDocument, type RenderDocumentProps } from "./Render";
 
+export {
+  applyAIEdit,
+  type JsonPatch,
+  type ApplyAIEditResult,
+} from "./applyAIEdit";
+
 import { registry } from "./components";
 import type { BlockType, EditorAPI, EditorDocument } from "./types";
 
