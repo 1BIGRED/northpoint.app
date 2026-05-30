@@ -32,6 +32,14 @@ export function Editor({ registry, document, onChange, onPublish }: EditorProps)
       data={initialData}
       onChange={onChange ? (data) => onChange(fromPuckData(data)) : undefined}
       onPublish={onPublish ? (data) => onPublish(fromPuckData(data)) : undefined}
+      overrides={{
+        // Hide Puck's built-in header Publish button. The app renders its own
+        // publish control in the editor status bar (Group E5); showing both
+        // gave the editor two Publish buttons. Suppressing the built-in one
+        // keeps a single, confirm-dialog-gated publish path. Containing the
+        // Puck-specific override here honors the abstraction rule (§3).
+        headerActions: () => <></>,
+      }}
     />
   );
 }

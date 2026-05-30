@@ -23,9 +23,12 @@ type Props = {
   initialPublishedAt: string | null;
 };
 
-type SaveState = "idle" | "saving" | "saved" | "error";
+type SaveState = "idle" | "saving" | "saved" | "retrying" | "error";
 
 const SAVE_THROTTLE_MS = 500;
+// On a failed save we retry once automatically after this delay before
+// surfacing a hard failure to the user.
+const SAVE_RETRY_DELAY_MS = 1500;
 
 // Client half of the editor route. Owns autosave (trailing-edge throttle),
 // publish/unpublish (each behind a confirm dialog), and the save +
@@ -59,9 +62,24 @@ export function SiteEditor({
       const result = await saveAction(siteId, path, latestDocument.current);
       setSavedAt(result.savedAt);
       setSaveState("saved");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setSaveState("error");
+    } catch (firstErr) {
+      // Auto-retry once before declaring failure — most save errors are
+      // transient (a dropped connection, a cold serverless function). The
+      // indicator shows "Save failed — retrying…" during the backoff.
+      setError(firstErr instanceof Error ? firstErr.message : String(firstErr));
+      setSaveState("retrying");
+      await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_DELAY_MS));
+      try {
+        const result = await saveAction(siteId, path, latestDocument.current);
+        setSavedAt(result.savedAt);
+        setSaveState("saved");
+        setError(null);
+      } catch (secondErr) {
+        setError(
+          secondErr instanceof Error ? secondErr.message : String(secondErr),
+        );
+        setSaveState("error");
+      }
     }
   }, [siteId, path]);
 
@@ -167,24 +185,29 @@ function StatusBar({
   onPublishClick: () => void;
   onUnpublishClick: () => void;
 }) {
-  const saveLabel =
+  // One source of truth for the save indicator: text, color, and an optional
+  // hover tooltip. "saved" shows a plain "Saved" with a "Last saved Xs ago"
+  // tooltip driven by the throttled save timestamp.
+  const save: { label: string; className: string; title?: string } =
     saveState === "saving"
-      ? "Saving…"
-      : saveState === "saved" && savedAt
-        ? `Saved ${new Date(savedAt).toLocaleTimeString()}`
+      ? { label: "Saving…", className: "text-muted-foreground" }
+      : saveState === "retrying"
+        ? { label: "Save failed — retrying…", className: "text-amber-700" }
         : saveState === "error"
-          ? "Save failed"
-          : "All changes saved";
+          ? { label: "Couldn’t save", className: "text-red-700" }
+          : saveState === "saved" && savedAt
+            ? {
+                label: "Saved",
+                className: "text-muted-foreground",
+                title: `Last saved ${relativeTime(savedAt)}`,
+              }
+            : { label: "All changes saved", className: "text-muted-foreground" };
 
   return (
     <div className="flex items-center justify-between border-b bg-white px-4 py-2 text-sm">
       <div className="flex items-center gap-3">
-        <span
-          className={
-            saveState === "error" ? "text-red-700" : "text-muted-foreground"
-          }
-        >
-          {saveLabel}
+        <span className={save.className} title={save.title}>
+          {save.label}
         </span>
         <span className="text-muted-foreground" aria-hidden>
           ·
@@ -199,7 +222,9 @@ function StatusBar({
         ) : (
           <span className="text-muted-foreground">Not published yet</span>
         )}
-        {error ? <span className="font-mono text-xs text-red-700">{error}</span> : null}
+        {saveState === "error" && error ? (
+          <span className="font-mono text-xs text-red-700">{error}</span>
+        ) : null}
       </div>
       <div className="flex items-center gap-3">
         {publishedAt ? (
