@@ -218,6 +218,67 @@ export async function unpublishDocument(
   }
 }
 
+export type PageSummary = {
+  path: string;
+  publishedAt: string | null;
+};
+
+// List a site's pages (one row per path) for the editor's page switcher.
+// RLS-scoped via the session client, so it only returns pages of a site the
+// caller owns. Home ("/") may not have a row yet on a brand-new site — the
+// caller is responsible for always offering "/" even when this is empty.
+export async function listPages(siteId: string): Promise<PageSummary[]> {
+  const supabase = await getSupabaseServer();
+  const { data, error } = await supabase
+    .from("site_pages")
+    .select("path, published_at")
+    .eq("site_id", siteId)
+    .is("deleted_at", null)
+    .order("path", { ascending: true });
+
+  if (error) {
+    throw new Error(`listPages failed: ${error.message}`);
+  }
+  return (data ?? []).map((row) => ({
+    path: row.path as string,
+    publishedAt: (row.published_at as string | null) ?? null,
+  }));
+}
+
+// Create a new (empty-draft) page at `path` for a site. RLS (site_pages_owner_
+// all) gates it to the caller's own site. Fails if the path is already taken —
+// the unique (site_id, path) index also enforces this, but we check first for
+// a friendly message (and soft-deleted rows still occupy their slot).
+export async function createPage(
+  siteId: string,
+  path: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await getSupabaseServer();
+
+  const { data: existing, error: readError } = await supabase
+    .from("site_pages")
+    .select("id, deleted_at")
+    .eq("site_id", siteId)
+    .eq("path", path)
+    .maybeSingle();
+  if (readError) {
+    return { ok: false, error: `Couldn't check existing pages: ${readError.message}` };
+  }
+  if (existing) {
+    return { ok: false, error: "A page with that name already exists." };
+  }
+
+  const { error } = await supabase.from("site_pages").insert({
+    site_id: siteId,
+    path,
+    draft_content: emptyDocument(),
+  });
+  if (error) {
+    return { ok: false, error: `Couldn't create the page: ${error.message}` };
+  }
+  return { ok: true };
+}
+
 // Pick the first non-deleted site owned by the current authenticated
 // user. /spike/editor uses this when no siteId query param is provided
 // so the developer doesn't have to look up UUIDs.
