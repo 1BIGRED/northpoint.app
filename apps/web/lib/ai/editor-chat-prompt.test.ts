@@ -32,11 +32,30 @@ describe("describeBlockTypes", () => {
       expect(text).toContain(def.label);
     }
   });
+
+  it("includes each block's exact default-props shape as an example", () => {
+    const text = describeBlockTypes(registry);
+    // The whole point of the v2 fix: the Hours schema must show the real
+    // per-day {day, open, close} shape so the AI stops inventing {day, hours}.
+    expect(text).toContain('"open"');
+    expect(text).toContain('"close"');
+    // The default props JSON for Hours appears verbatim.
+    expect(text).toContain(JSON.stringify(registry.Hours.defaultProps, null, 2));
+  });
+
+  it("spells out select options and array item fields", () => {
+    const text = describeBlockTypes(registry);
+    // Text.level options.
+    expect(text).toContain('"h1"');
+    expect(text).toContain('"h2"');
+    // Hours days is described as an array with day/open/close items.
+    expect(text).toMatch(/days — array/);
+  });
 });
 
 describe("buildSystemPrompt", () => {
   it("uses the versioned prompt template", () => {
-    expect(PROMPT_VERSION).toBe("editor-chat-v1");
+    expect(PROMPT_VERSION).toBe("editor-chat-v2");
   });
 
   it("embeds the live document as pretty JSON", () => {
