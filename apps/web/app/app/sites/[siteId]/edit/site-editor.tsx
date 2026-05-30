@@ -10,17 +10,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@northpoint/ui/components/dialog";
+import { Toaster } from "@northpoint/ui/components/sonner";
 
 import { Editor, registry, type EditorDocument } from "@/lib/editor";
 import { relativeTime } from "@/lib/relative-time";
 
-import { publishAction, saveAction, unpublishAction } from "./actions";
+import { ChatPanel } from "./chat-panel";
+import {
+  publishAction,
+  reloadDocumentAction,
+  saveAction,
+  unpublishAction,
+} from "./actions";
 
 type Props = {
   siteId: string;
   path: string;
   initialDocument: EditorDocument;
   initialPublishedAt: string | null;
+  // Whether the server has ANTHROPIC_API_KEY configured (gates the AI chat).
+  aiEnabled: boolean;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "retrying" | "error";
@@ -39,6 +48,7 @@ export function SiteEditor({
   path,
   initialDocument,
   initialPublishedAt,
+  aiEnabled,
 }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -48,6 +58,13 @@ export function SiteEditor({
   const [error, setError] = useState<string | null>(null);
   const [isPublishing, startPublish] = useTransition();
   const [confirm, setConfirm] = useState<null | "publish" | "unpublish">(null);
+
+  // Chat sidebar visibility + the document the canvas renders. AI edits land
+  // server-side (apply_patch saves the draft), so we re-key the Editor with
+  // the reloaded document to reflect them — `editorKey` forces a remount.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [editorDoc, setEditorDoc] = useState<EditorDocument>(initialDocument);
+  const [editorKey, setEditorKey] = useState(0);
 
   // Trailing-edge throttle: coalesce a burst of edits into one save fired
   // SAVE_THROTTLE_MS after the latest change.
@@ -124,6 +141,23 @@ export function SiteEditor({
     });
   }, [siteId, path]);
 
+  // After the AI applies an edit, pull the freshly-saved draft back from the
+  // server and remount the canvas so the change is visible. The chat route
+  // already persisted it, so there's nothing to save here.
+  const onAppliedEdit = useCallback(() => {
+    void reloadDocumentAction(siteId, path)
+      .then((result) => {
+        latestDocument.current = result.document;
+        setEditorDoc(result.document);
+        setEditorKey((k) => k + 1);
+        setSavedAt(new Date().toISOString());
+        setSaveState("saved");
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+      });
+  }, [siteId, path]);
+
   const doUnpublish = useCallback(() => {
     setConfirm(null);
     setError(null);
@@ -146,16 +180,28 @@ export function SiteEditor({
         publishedAt={publishedAt}
         isPublishing={isPublishing}
         error={error}
+        chatOpen={chatOpen}
+        onToggleChat={() => setChatOpen((open) => !open)}
         onPublishClick={() => setConfirm("publish")}
         onUnpublishClick={() => setConfirm("unpublish")}
       />
-      <div className="flex-1">
-        <Editor
-          registry={registry}
-          document={initialDocument}
-          onChange={onChange}
-          onPublish={() => setConfirm("publish")}
-        />
+      <div className="flex flex-1 overflow-hidden">
+        <div className="min-w-0 flex-1">
+          <Editor
+            key={editorKey}
+            registry={registry}
+            document={editorDoc}
+            onChange={onChange}
+            onPublish={() => setConfirm("publish")}
+          />
+        </div>
+        {chatOpen ? (
+          <ChatPanel
+            siteId={siteId}
+            aiEnabled={aiEnabled}
+            onAppliedEdit={onAppliedEdit}
+          />
+        ) : null}
       </div>
 
       <PublishDialog
@@ -164,6 +210,7 @@ export function SiteEditor({
         onCancel={() => setConfirm(null)}
         onConfirm={confirm === "unpublish" ? doUnpublish : doPublish}
       />
+      <Toaster />
     </div>
   );
 }
@@ -174,6 +221,8 @@ function StatusBar({
   publishedAt,
   isPublishing,
   error,
+  chatOpen,
+  onToggleChat,
   onPublishClick,
   onUnpublishClick,
 }: {
@@ -182,6 +231,8 @@ function StatusBar({
   publishedAt: string | null;
   isPublishing: boolean;
   error: string | null;
+  chatOpen: boolean;
+  onToggleChat: () => void;
   onPublishClick: () => void;
   onUnpublishClick: () => void;
 }) {
@@ -227,6 +278,19 @@ function StatusBar({
         ) : null}
       </div>
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onToggleChat}
+          aria-pressed={chatOpen}
+          className={
+            "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors " +
+            (chatOpen
+              ? "border-black bg-black text-white"
+              : "hover:bg-muted")
+          }
+        >
+          Ask
+        </button>
         {publishedAt ? (
           <button
             type="button"

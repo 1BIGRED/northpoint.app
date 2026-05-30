@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import type { EditorDocument } from "@/lib/editor";
 import {
+  loadDocument,
   publishDocument,
   saveDocument,
   unpublishDocument,
@@ -33,6 +34,17 @@ export async function publishAction(
   // Bust the public render cache once that route exists (Group E6).
   revalidatePath(`/sites/${siteId}`);
   return { ok: true, publishedAt };
+}
+
+// Re-read the current draft document. The AI chat (Group E8) edits and saves
+// the draft server-side via apply_patch; the client calls this after a chat
+// turn to pull the updated document back into the editor canvas.
+export async function reloadDocumentAction(
+  siteId: string,
+  path: string,
+): Promise<{ ok: true; document: EditorDocument }> {
+  const { document } = await loadDocument(siteId, path);
+  return { ok: true, document };
 }
 
 export async function unpublishAction(

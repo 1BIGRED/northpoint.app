@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { isAIConfigured } from "@/lib/ai/anthropic";
 import { editor } from "@/lib/editor";
 import { getOwnedSite, loadDocument } from "@/lib/editor/storage/supabase";
 import { getSupabaseServer } from "@/lib/supabase/server";
@@ -65,6 +66,7 @@ export default async function SiteEditPage({
         path={DEFAULT_PATH}
         initialDocument={initial.document ?? editor.emptyDocument()}
         initialPublishedAt={initial.publishedAt}
+        aiEnabled={isAIConfigured()}
       />
     </main>
   );
