@@ -53,6 +53,10 @@ export function ChatPanel({
     transport: new DefaultChatTransport({
       api: `/api/sites/${siteId}/chat`,
     }),
+    // The route already streams (streamText → toUIMessageStreamResponse);
+    // throttle the resulting re-renders to ~50ms so token-by-token text paints
+    // smoothly instead of thrashing React on every chunk.
+    experimental_throttle: 50,
   });
 
   // Fire onAppliedEdit + a toast exactly once per successful apply_patch.
@@ -77,6 +81,11 @@ export function ChatPanel({
   }, [messages, onAppliedEdit]);
 
   const busy = status === "submitted" || status === "streaming";
+  // "submitted" = request sent, no stream parts yet → show a "Thinking…"
+  // indicator. Once "streaming" begins, the growing message bubble (text
+  // tokens / tool chips) is its own progress signal, so the indicator drops
+  // away rather than sitting alongside the live response.
+  const waitingForResponse = status === "submitted";
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -117,12 +126,10 @@ export function ChatPanel({
                 <MessageBubble key={message.id} message={message} />
               ))
             )}
-            {busy ? (
-              <p className="text-xs text-muted-foreground">Sending…</p>
-            ) : null}
+            {waitingForResponse ? <ThinkingIndicator /> : null}
             {error ? (
               <p className="text-xs text-red-700">
-                Something went wrong. {error.message}
+                Something went wrong. {error.message} Try sending that again.
               </p>
             ) : null}
           </div>
@@ -152,6 +159,26 @@ export function ChatPanel({
         </>
       )}
     </aside>
+  );
+}
+
+// Shown only while waiting for the first streamed chunk. Three pulsing dots
+// read as "the AI is thinking" before any text arrives; it disappears the
+// moment streaming starts, handing the progress story to the live response.
+function ThinkingIndicator() {
+  return (
+    <div
+      className="flex items-center gap-1.5 text-xs text-muted-foreground"
+      role="status"
+      aria-label="Thinking"
+    >
+      <span className="flex gap-1">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60" />
+      </span>
+      <span>Thinking…</span>
+    </div>
   );
 }
 
