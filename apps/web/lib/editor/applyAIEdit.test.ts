@@ -49,6 +49,28 @@ describe("applyAIEdit", () => {
     }
   });
 
+  it("fills missing props with defaults so an incomplete block can't crash the renderer (regression)", () => {
+    // The bug: an AI adds a Text with only {heading} — valid shape, but no
+    // `level`, which crashed the editor on the next load. applyAIEdit must
+    // normalize the result so the persisted block is complete.
+    const patch: JsonPatch = [
+      {
+        op: "add",
+        path: "/blocks/-",
+        value: { id: "blk-3", type: "Text", props: { heading: "Welcome" } },
+      },
+    ];
+    const result = applyAIEdit(baseDoc(), patch);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const added = result.document.blocks[2];
+      expect(added.props.heading).toBe("Welcome");
+      // Missing required props are filled from the registry defaults.
+      expect(added.props.level).toBeDefined();
+      expect(added.props.body).toBeDefined();
+    }
+  });
+
   it("rejects a patch that tries to mutate a block id", () => {
     const patch: JsonPatch = [
       { op: "replace", path: "/blocks/0/id", value: "hacked" },

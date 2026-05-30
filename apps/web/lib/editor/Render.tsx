@@ -7,6 +7,7 @@
 
 import { Render } from "@puckeditor/core/rsc";
 
+import { normalizeDocument } from "./normalize";
 import { buildPuckConfig, toPuckData } from "./puck-adapter";
 import type { ComponentRegistry, EditorDocument } from "./types";
 
@@ -17,6 +18,9 @@ export type RenderDocumentProps = {
 
 export function RenderDocument({ registry, document }: RenderDocumentProps) {
   const config = buildPuckConfig(registry);
-  const data = toPuckData(document);
+  // Fill missing props with defaults so a published page with an incomplete
+  // block (e.g. from an older AI edit) renders instead of crashing. See
+  // normalize.ts.
+  const data = toPuckData(normalizeDocument(document, registry));
   return <Render config={config} data={data} />;
 }
