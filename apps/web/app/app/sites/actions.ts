@@ -3,19 +3,28 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentAccount } from "@/lib/account";
+import { buildTemplateDocument, isTemplateId } from "@/lib/editor";
 import {
   buildDocumentFromParsed,
   parseSiteHtml,
 } from "@/lib/import/parse-site";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
-// Create a new site for the current user's account, then drop them into the
-// editor for it. The INSERT runs through the session client: the
-// sites_owner_all RLS policy's WITH CHECK confirms the account_id belongs to
-// the caller, so this can't create a site under someone else's account.
+// Create a new site for the current user's account, seed its home page with the
+// chosen starter template, then drop them into the editor. The INSERT runs
+// through the session client: the sites_owner_all RLS policy's WITH CHECK
+// confirms the account_id belongs to the caller, so this can't create a site
+// under someone else's account.
+//
+// `template` defaults to "blank"; a blank template leaves draft_content unset
+// so the editor falls back to an empty canvas (loadDocument's behavior), while
+// any other template seeds a site_pages row with the starter document.
 export async function createSite(formData: FormData): Promise<void> {
   const rawName = String(formData.get("name") ?? "").trim();
   const name = rawName || "Untitled site";
+
+  const rawTemplate = String(formData.get("template") ?? "blank");
+  const template = isTemplateId(rawTemplate) ? rawTemplate : "blank";
 
   const account = await getCurrentAccount();
   if (!account) {
@@ -31,6 +40,20 @@ export async function createSite(formData: FormData): Promise<void> {
 
   if (error || !data) {
     throw new Error(`createSite failed: ${error?.message ?? "no row returned"}`);
+  }
+
+  // Seed the home page with the template's starter content. Blank skips the
+  // insert entirely — the editor shows its empty-canvas state instead.
+  if (template !== "blank") {
+    const document = buildTemplateDocument(template, name);
+    const { error: pageError } = await supabase.from("site_pages").insert({
+      site_id: data.id,
+      path: "/",
+      draft_content: document,
+    });
+    if (pageError) {
+      throw new Error(`createSite seed failed: ${pageError.message}`);
+    }
   }
 
   // Straight into the editor (route ships in E3 / #23).

@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button } from "@northpoint/ui/components/button";
-import { Input } from "@northpoint/ui/components/input";
-
 import { getCurrentAccount, getProfileForAccount } from "@/lib/account";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
-import { createSite } from "./actions";
+import { CreateSiteButton } from "./create-site-button";
 import { ImportSiteButton } from "./import-site-button";
 
 export const dynamic = "force-dynamic";
@@ -71,12 +68,14 @@ export default async function SitesListPage() {
       </div>
 
       <section className="space-y-4 rounded-lg border p-4">
-        <div>
-          <h2 className="text-sm font-medium">Create a new site</h2>
-          <form action={createSite} className="mt-3 flex gap-2">
-            <Input name="name" placeholder="Site name (e.g. BC Glass & Tint)" />
-            <Button type="submit">Create new site</Button>
-          </form>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-medium">Create a new site</h2>
+            <p className="text-xs text-muted-foreground">
+              Start from a template that fits your business.
+            </p>
+          </div>
+          <CreateSiteButton />
         </div>
         <div className="flex items-center justify-between gap-4 border-t pt-4">
           <div>
