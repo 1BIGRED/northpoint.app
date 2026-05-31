@@ -1,5 +1,6 @@
 import { cache } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { registry, RenderDocument } from "@/lib/editor";
@@ -12,12 +13,18 @@ const PATH = "/";
 // database read instead of querying twice.
 const getPage = cache((siteId: string) => loadPublishedDocument(siteId, PATH));
 
-function pageTitle(doc: { root?: Record<string, unknown> }): string {
+// The public-facing name of a site. By design (migration 0004) anon visitors
+// can't read the `sites` table, so the name comes from the published
+// document's root.title — which templates seed with the business name.
+// Returns null when unset so callers can fall back gracefully.
+function siteName(doc: { root?: Record<string, unknown> }): string | null {
   const t = doc.root?.title;
-  return typeof t === "string" && t.trim() ? t : "Northpoint site";
+  return typeof t === "string" && t.trim() ? t.trim() : null;
 }
 
-function pageDescription(doc: { root?: Record<string, unknown> }): string | undefined {
+function pageDescription(doc: {
+  root?: Record<string, unknown>;
+}): string | undefined {
   const d = doc.root?.description;
   return typeof d === "string" && d.trim() ? d : undefined;
 }
@@ -35,7 +42,8 @@ export async function generateMetadata({
     return { title: "Not found", robots: { index: false, follow: false } };
   }
 
-  const title = pageTitle(page.document);
+  // The browser tab / SEO title is the site's own name.
+  const title = siteName(page.document) ?? "Northpoint site";
   const description = pageDescription(page.document);
   return {
     title,
@@ -66,9 +74,36 @@ export default async function PublicSitePage({
     notFound();
   }
 
+  const name = siteName(page.document);
+
+  // Sticky-footer column: header at top, content fills, footer pinned to the
+  // bottom on short pages. Content is centered with the same max-width as the
+  // editor canvas so the published page matches what was edited.
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <RenderDocument registry={registry} document={page.document} />
-    </main>
+    <div className="flex min-h-screen flex-col bg-white text-gray-900">
+      <header className="border-b border-gray-100">
+        <div className="mx-auto w-full max-w-3xl px-5 py-4 sm:px-6 sm:py-5">
+          <span className="text-base font-semibold tracking-tight sm:text-lg">
+            {name ?? "Untitled site"}
+          </span>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-6 sm:py-10">
+        <RenderDocument registry={registry} document={page.document} />
+      </main>
+
+      <footer className="border-t border-gray-100">
+        <div className="mx-auto w-full max-w-3xl px-5 py-6 text-xs text-gray-500 sm:px-6">
+          {name ? `${name} · ` : ""}Made with{" "}
+          <Link
+            href="/"
+            className="font-medium text-gray-700 underline-offset-4 hover:text-gray-900 hover:underline"
+          >
+            Northpoint
+          </Link>
+        </div>
+      </footer>
+    </div>
   );
 }
